@@ -127,7 +127,7 @@ img.cover { padding: 0 }
   <section id="pages" class="pages"></section>
   <div class="updated" id="updated"></div>
   
-  <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a>（発売日・表紙は楽天ブックス・楽天Koboのデータです）</div>
+  <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a></div>
 </div>
 
 
@@ -331,7 +331,7 @@ function candHtml(c, i) {
   if (c.state === 'dup') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.dup)}</div>
     <div class="state dup">登録済みです</div>${heardNote}</div></div></div>`;
   if (c.state === 'miss') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.query)}</div>
-    <div class="state miss">楽天で見つかりませんでした。題名を直して調べてください</div></div></div>
+    <div class="state miss">見つかりませんでした。題名を直して調べてください</div></div></div>
     <div class="fix"><input id="fix${i}" value="${esc(c.query)}" aria-label="題名を直す"><button class="ghost" data-fix="${i}">調べる</button></div></div>`;
   if (c.state === 'ok') { const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" checked aria-label="${esc(x.name)}を追加">${img(x)}<div>
     <div class="title">${esc(x.name)}${x.edition === '電子' ? '（電子書籍）' : ''}</div><div class="meta">${esc(slash(x.authorFull))}｜${esc(x.publisher)}${x.latest ? '｜' + esc(x.latest) + '巻まで発売' : ''}</div>
@@ -347,7 +347,7 @@ function renderCands() {
 }
 function find(text, at) {
   const btn = at == null ? $('find') : null;
-  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">楽天で調べています…</div>'; $('add-all').hidden = true; }
+  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">調べています…</div>'; $('add-all').hidden = true; }
   return mangaApi('findWorks', [text]).then(r => {
     if (at == null) cands = r; else cands.splice(at, 1, ...r);
     renderCands();
