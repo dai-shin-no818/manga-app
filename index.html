@@ -245,6 +245,7 @@ img.cover { padding: 0 }
       }); })
       .then(function(j){
         if (j.ok) return j.result;
+        if (j.error === 'retry') { var x2 = new Error('混み合っていました。少し待ってもう一度試してください'); x2.network = true; throw x2; }
         if (j.error === 'auth') { try { localStorage.removeItem(KEY_NAME); } catch (e) {} }
         throw new Error(j.error === 'auth' ? '合言葉が違います。合言葉つきのアドレスから開き直してください' : (j.error || 'エラー'));
       });
@@ -315,6 +316,14 @@ function renderSearch() {
     : '<div class="empty">登録した漫画に、合うものがありません</div>';
 }
 
+function freshCard(w) {
+  const i = cardWorks.push(w) - 1;
+  return `<button class="item" data-card="${i}" aria-label="${esc(w.name)}のくわしい情報を開く">${cover(w, '')}<div class="info">
+    <div class="title">${esc(w.name)}</div>
+    <div class="when"><span class="tbd">発売日を調べています…</span></div>
+    <div class="meta">追加しました</div>
+  </div></button>`;
+}
 function noNextCard(w) {
   const i = cardWorks.push(w) - 1;
   return `<button class="item" data-card="${i}" aria-label="${esc(w.name)}のくわしい情報を開く">${cover(w, w.latest)}<div class="info">
@@ -345,7 +354,9 @@ function renderPages() {
   cardWorks = [];
   $('pages').innerHTML = months.map(k => {
     const ws = (byMonth[k] || []).sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
-    return `<div class="page" data-month="${k}">${ws.length ? ws.map(card).join('') : '<div class="empty">この月に発売予定の巻はまだありません。</div>'}</div>`;
+    
+    const fresh = k === thisMonth ? list.works.filter(w => !w.checkedAt) : [];
+    return `<div class="page" data-month="${k}">${fresh.map(freshCard).join('')}${ws.length ? ws.map(card).join('') : (fresh.length ? '' : '<div class="empty">この月に発売予定の巻はまだありません。</div>')}</div>`;
   }).join('');
   if (!list.works.length) $('pages').innerHTML = '<div class="page"><div class="empty">登録した漫画がありません。下の「声で追加」から足してください。</div></div>';
   goMonth(Math.min(monthAt, months.length - 1), false);
@@ -441,13 +452,17 @@ function candHtml(c, i) {
     <div class="state ok">見つかりました</div>${heardNote}</div></div></div>`; }
   const anyNew = o.some(x => !x.dup);
   if (c.pick == null) c.pick = o.findIndex(y => !y.dup);
+  // 近い作品が 1 つだけ：はっきり同じとは言えないので、チェックは外しておき、合っていればチェックしてもらう
+  if (o.length === 1) { if (c.checked == null) c.checked = false; const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" data-i="${i}"${c.checked ? ' checked' : ''}${x.dup ? ' disabled' : ''} aria-label="${esc(x.name)}を追加">${img(x)}<div>
+    <div class="title">${esc(x.name)}</div><div class="meta">${esc(slash(x.authorFull))}｜${esc(x.publisher)}${x.latest ? '｜' + esc(x.latest) + '巻まで発売' : ''}</div>
+    <div class="state pick">${x.dup ? '近い作品が見つかりましたが、登録済みです' : '近い作品が 1 つ見つかりました。合っていればチェックしてください'}</div>${heardNote}</div></div></div>`; }
   return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" data-i="${i}"${anyNew && c.checked !== false ? ' checked' : ''}${anyNew ? '' : ' disabled'} aria-label="${esc(c.query)}を追加"><div><div class="title">${esc(c.query)}</div>
     <div class="state pick">いくつか見つかりました。どれですか</div>${heardNote}</div></div>
     <div class="choices">${o.map((x, j) => `<label><input type="radio" name="p${i}" data-i="${i}" value="${j}"${x.dup ? ' disabled' : ''}${j === c.pick ? ' checked' : ''}>${desc(x)}${x.dup ? '　登録済み' : ''}</label>`).join('')}</div></div>`;
 }
 function renderCands() {
   $('cands').innerHTML = cands.map(candHtml).join('');
-  $('add-all').hidden = !cands.some(c => (c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup))) && c.checked !== false);
+  $('add-all').hidden = !cands.some(c => (c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup))) && (c.options.length === 1 && c.state === 'pick' ? c.checked === true : c.checked !== false));
 }
 // チェックと選んだ候補を覚える
 $('cands').addEventListener('change', e => {
@@ -553,6 +568,7 @@ $('add-all').onclick = () => {
   cands.forEach(c => {
     if (c.checked === false) return;
     if (c.state === 'ok') items.push(c.options[0]);
+    if (c.state === 'pick' && c.options.length === 1 && c.checked !== true) return;
     if (c.state === 'pick' && c.options[c.pick] && !c.options[c.pick].dup) items.push(c.options[c.pick]);
   });
   if (!items.length) { toast('チェックした作品がありません'); return; }
@@ -564,6 +580,7 @@ $('add-all').onclick = () => {
   addQueue = addQueue.then(() => mangaApi('addWorks', [items]).then(r => {
     setList(r);
     showResult(r.added || [], (r.skipped || []).map(x => `${x.name}（${x.reason}）`));
+    watchFresh(0);
   }, err => {
     
     return mangaApi('getList', []).then(r => {
@@ -574,6 +591,12 @@ $('add-all').onclick = () => {
   }).finally(() => { adding -= items.length; showAdding(); }));
 };
 let adding = 0, addQueue = Promise.resolve();
+
+function watchFresh(n) {
+  clearTimeout(watchFresh.t);
+  if (n >= 9 || !list || !list.works.some(w => !w.checkedAt)) return;
+  watchFresh.t = setTimeout(() => mangaApi('getList', []).then(r => { setList(r); watchFresh(n + 1); }, () => watchFresh(n + 1)), 20000);
+}
 function showAdding() {
   $('adding').hidden = adding <= 0;
   $('adding-text').textContent = `${adding}作品を追加しています…（発売日も調べています）`;
@@ -582,7 +605,7 @@ function showAdding() {
 function showResult(added, failed) {
   const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
   $('result-body').innerHTML =
-    (added.length ? `<div class="r-ok">追加しました（${added.length}）</div><ul>${li(added)}</ul>` : '') +
+    (added.length ? `<div class="r-ok">追加しました（${added.length}）</div><ul>${li(added)}</ul><div class="meta">発売日は 1〜2 分ほどで出ます</div>` : '') +
     (failed.length ? `<div class="r-ng">追加しませんでした（${failed.length}）</div><ul>${li(failed)}</ul>` : '') +
     (!added.length && !failed.length ? '<div>追加する作品はありませんでした</div>' : '');
   $('result').hidden = false;
