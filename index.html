@@ -381,6 +381,9 @@ function listen() {
   };
   rec.onend = () => {
     clearTimeout(listen.t);
+    
+    r.onresult = r.onerror = r.onend = null;
+    try { r.abort(); } catch (err) {}
     rec = null; $('talk').hidden = false;
     const t = $('heard').value.trim();
     if (t) { $('listen').hidden = true; find(t); }
@@ -395,6 +398,9 @@ function stopListen() {
   try { r.abort(); } catch (e) {}
   $('listen').hidden = true; $('talk').hidden = false;
 }
+
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopListen(); });
+window.addEventListener('pagehide', stopListen);
 $('talk').onclick = () => listen();
 $('done-talk').onclick = () => { if (rec) { try { rec.stop(); } catch (e) {} } };
 $('open-add').onclick = () => { menu(false); $('sheet').hidden = false; cands = []; $('cands').innerHTML = ''; $('add-all').hidden = true; listen(); };
