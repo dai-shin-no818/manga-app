@@ -165,12 +165,12 @@ img.cover { padding: 0 }
   <div class="panel" role="dialog" aria-labelledby="sheet-title">
     <h2 id="sheet-title">漫画を追加</h2>
     <div class="heard">
-      <div class="listen" id="listen" hidden><span class="dot"></span><span id="listen-text" style="flex:1">聞いています…</span><button class="ghost" id="done-talk" style="color:var(--fg)">話し終わった</button></div>
+      <div class="listen" id="listen" hidden><span class="dot"></span><span id="listen-text" style="flex:1">聞いています…</span><button class="primary" id="done-talk" style="padding:9px 12px;font-size:.9rem;flex:none">話し終わった・調べる</button></div>
       <label for="heard">追加したい漫画の題名（いくつか続けて言っても大丈夫です。聞き違いはここで直せます）</label>
       <textarea id="heard" placeholder="例：薬屋のひとりごと、ドラゴンボール超 カラー版"></textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="ghost" id="find">調べる</button>
-        <button class="ghost" id="talk" hidden>もう一度話す</button>
+        <button class="ghost" id="talk" hidden>続けて話す</button>
       </div>
     </div>
     <div id="cands" style="display:grid;gap:10px"></div>
@@ -424,34 +424,33 @@ async function find(text, at) {
 //   音声認識が使えないときは、書く欄にキーボードで入れる（キーボードのマイクでも話せる）
 const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
-function listen() {
+function listen(append) {
   if (!Speech) { setTimeout(() => $('heard').focus(), 50); return; }
   stopListen();
   rec = new Speech();
-  //   続けて話せるように continuous にし、話が 2.5 秒とぎれたら（または「話し終わった」を押したら）終わる
+  //   ボタンを押すまで聞き続ける（話がとぎれても自動では調べない。ユーザーの希望）。append なら今の言葉のあとに続ける
   rec.lang = 'ja-JP'; rec.interimResults = true; rec.continuous = true;
-  $('listen').hidden = false; $('talk').hidden = true; $('heard').value = '';
-  $('listen-text').textContent = '聞いています…続けて話せます。話し終わると自動で調べます';
+  const before = append ? $('heard').value.trim() : '';
+  $('listen').hidden = false; $('talk').hidden = true; if (!append) $('heard').value = '';
+  $('listen-text').textContent = '聞いています…話し終わったら右のボタンを押してください';
   const r = rec;
   rec.onresult = e => {
     // 区切りごとの言葉を「、」でつなぐ（作品の区切りの手がかりになる）
-    $('heard').value = Array.from(e.results).map(x => x[0].transcript.trim()).filter(Boolean).join('、');
-    clearTimeout(listen.t);
-    listen.t = setTimeout(() => { if (rec === r) { try { r.stop(); } catch (err) {} } }, 2500);
+    const said = Array.from(e.results).map(x => x[0].transcript.trim()).filter(Boolean).join('、');
+    $('heard').value = [before, said].filter(Boolean).join('、');
   };
   rec.onerror = e => {
     $('listen-text').textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed'
       ? 'マイクか音声認識が許可されていません。iPhone の「設定」→「Safari」で許可するか、下の欄に書いてください'
-      : e.error === 'no-speech' ? '声が聞こえませんでした。「もう一度話す」を押してください' : '聞き取れませんでした（' + e.error + '）';
+      : e.error === 'no-speech' ? '声が聞こえませんでした。「続けて話す」を押してください' : '聞き取れませんでした（' + e.error + '）';
   };
+  // iPhone の都合で聞き取りが止まったとき：言葉は残し、自動では調べない。「続けて話す」か「調べる」を押してもらう
   rec.onend = () => {
-    clearTimeout(listen.t);
     // 終わったあとも Safari がマイクをつかんだままになることがあるので、中止も送ってマイクを手放す
     r.onresult = r.onerror = r.onend = null;
     try { r.abort(); } catch (err) {}
-    rec = null; $('talk').hidden = false;
-    const t = $('heard').value.trim();
-    if (t) { $('listen').hidden = true; find(t); }
+    rec = null; $('talk').hidden = false; $('listen').hidden = true;
+    if ($('heard').value.trim()) toast('聞き取りが止まりました。「続けて話す」か「調べる」を押してください');
   };
   try { rec.start(); } catch (e) { $('listen').hidden = true; $('talk').hidden = false; }
 }
@@ -466,15 +465,16 @@ function stopListen() {
 // 画面から離れたら（ほかのアプリに切り替えたときなど）聞き取りをやめてマイクを手放す
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopListen(); });
 window.addEventListener('pagehide', stopListen);
-$('talk').onclick = () => listen();
+$('talk').onclick = () => listen(true);
 // ほかのアプリから戻ってきたら、一覧を新しくする（5 分以上たっていたら）
 let loadedAt = Date.now();
 document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - loadedAt > 5 * 60e3) { loadedAt = Date.now(); load(); } });
-$('done-talk').onclick = () => { if (rec) { try { rec.stop(); } catch (e) {} } };
-$('open-add').onclick = () => { menu(false); $('sheet').hidden = false; cands = []; $('cands').innerHTML = ''; $('add-all').hidden = true; listen(); };
+function searchNow() { stopListen(); const t = $('heard').value.trim(); if (t) find(t); else toast('題名を話すか書いてください'); }
+$('done-talk').onclick = searchNow;
+$('open-add').onclick = () => { menu(false); $('sheet').hidden = false; cands = []; $('cands').innerHTML = ''; $('add-all').hidden = true; listen(false); };
 $('close').onclick = () => { stopListen(); $('sheet').hidden = true; };
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) { stopListen(); $('sheet').hidden = true; } });
-$('find').onclick = () => { const t = $('heard').value.trim(); if (t) find(t); else toast('題名を話すか書いてください'); };
+$('find').onclick = searchNow;
 $('cands').addEventListener('click', e => {
   const b = e.target.closest('button[data-fix]');
   if (!b) return;
