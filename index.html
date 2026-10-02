@@ -27,12 +27,12 @@
   --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 84px }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 40px }
 .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px }
 header { display: flex; justify-content: center; padding-block: 18px 4px }
-.menu-btn { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 14px rgb(0 0 0 / .25); z-index: 4 }
+.menu-btn { position: absolute; left: 16px; top: calc(12px + env(safe-area-inset-top, 0px)); width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; z-index: 4 }
 .menu-btn svg { width: 22px; height: 22px }
-.menu { position: fixed; left: 16px; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 8px 24px rgb(0 0 0 / .3); z-index: 4 }
+.menu { position: absolute; left: 16px; top: calc(62px + env(safe-area-inset-top, 0px)); display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 8px 24px rgb(0 0 0 / .3); z-index: 4 }
 .menu[hidden] { display: none }
 .menu button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 700; font-size: 1rem; padding: 12px 16px; border-radius: 10px; cursor: pointer; text-align: left; white-space: nowrap }
 .menu button:active { background: var(--chip) }
