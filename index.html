@@ -246,9 +246,8 @@ function cover(w, vol) {
   return w.image ? `<img class="cover" src="${esc(w.image)}" alt="第${esc(vol)}巻の表紙" loading="lazy" referrerpolicy="no-referrer">`
     : `<div class="cover" aria-hidden="true">表紙<br>${vol ? '第' + esc(vol) + '巻' : 'なし'}</div>`;
 }
-function edChip(w) { return `<span class="chip">${w.edition === '電子' ? '電子書籍' : '紙の本'}</span>`; }
 
-
+// 発売予定の巻のカード
 function card(w) {
   let when;
   if (w.exact && w.date) {
@@ -260,12 +259,11 @@ function card(w) {
     <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
     ${when}
     <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
-    <div class="chips">${edChip(w)}</div>
     ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
   </div></${tag}>`;
 }
 
-// 発売月ごとのページ（今月から、発売予定のある月まで）。次の巻が出ていない作品は「登録した漫画」の一覧だけに出す
+
 let months = [], monthAt = 0;
 function renderPages() {
   if (!list) return;
