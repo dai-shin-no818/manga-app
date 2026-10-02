@@ -13,7 +13,7 @@
  
 :root {
   --bg: #f4f3f6; --surface: #ffffff; --fg: #1d1b22; --muted: #6b6775; --line: #dcd9e2;
-  --accent: #c2410c; --accent-soft: #fbe7dc; --ok: #15803d; --warn: #a16207; --chip: #ecebf0;
+  --accent: #c2410c; --accent-soft: #fbe7dc; --ok: #15803d; --warn: #a16207; --chip: #ecebf0; --sheet: #e6e4ec;
   --display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --logo: "Russo One", "Arial Black", Impact, sans-serif;
@@ -21,10 +21,10 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #141318; --surface: #1d1c22; --fg: #ecebf0; --muted: #9c98a6; --line: #2e2c35;
-  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark } }
+  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; --sheet: #2b2a33; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #141318; --surface: #1d1c22; --fg: #ecebf0; --muted: #9c98a6; --line: #2e2c35;
-  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark }
+  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; --sheet: #2b2a33; color-scheme: dark }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 40px }
@@ -84,10 +84,12 @@ img.cover { padding: 0 }
 .work button.sure { border-color: var(--accent); color: var(--accent); font-weight: 700 }
 .empty { color: var(--muted); text-align: center; padding: 24px 8px; font-size: .9rem }
  
-.sheet { position: fixed; inset: 0; background: rgb(0 0 0 / .45); display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; z-index: 5 }
+.sheet { position: fixed; inset: 0; background: rgb(0 0 0 / .62); display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; z-index: 5 }
 .sheet[hidden] { display: none }
-.panel { background: var(--bg); border-radius: 18px 18px 0 0; max-height: 92%; overflow: auto; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; max-width: 640px; width: 100%; min-width: 0; margin: 0 auto; overflow-x: hidden; grid-template-columns: minmax(0, 1fr) }
+.panel { background: var(--sheet); border-top: 1px solid var(--line); box-shadow: 0 -8px 30px rgb(0 0 0 / .35); border-radius: 18px 18px 0 0; max-height: 92%; overflow: auto; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; max-width: 640px; width: 100%; min-width: 0; margin: 0 auto; overflow-x: hidden; grid-template-columns: minmax(0, 1fr) }
 .panel > *, .cand > *, .cand .head > div { min-width: 0 }
+ 
+.panel::before { content: ''; justify-self: center; width: 40px; height: 5px; border-radius: 999px; background: var(--muted); opacity: .5; margin: -8px 0 -4px }
 .cand .title { overflow-wrap: anywhere }
 .panel h2 { font-family: var(--display); font-weight: 400; font-size: 1.1rem; margin: 0 }
 .heard { display: grid; gap: 6px }
@@ -111,6 +113,10 @@ img.cover { padding: 0 }
 .primary { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 13px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer }
 .primary:disabled, .ghost:disabled { opacity: .5; cursor: default }
 .busy { color: var(--muted); font-size: .9rem; text-align: center }
+.adding { position: fixed; left: 50%; transform: translateX(-50%); top: calc(64px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 8px; background: var(--accent-soft); color: var(--fg); border: 1px solid var(--line); padding: 7px 14px; border-radius: 999px; font-size: .82rem; font-weight: 700; z-index: 6; max-width: calc(100% - 32px); box-shadow: 0 4px 14px rgb(0 0 0 / .25) }
+.adding[hidden] { display: none }
+.adding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none }
+@media (prefers-reduced-motion: no-preference) { .adding .dot { animation: blink 1s infinite } }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top, 0px)); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-weight: 700; z-index: 9; max-width: calc(100% - 32px); text-align: center }
 .updated { color: var(--muted); font-size: .75rem; text-align: center }
 @media (prefers-reduced-motion: no-preference) { .panel { animation: up .22s ease-out } @keyframes up { from { transform: translateY(24px); opacity: .6 } } }
@@ -172,6 +178,7 @@ img.cover { padding: 0 }
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="adding" id="adding" role="status" hidden><span class="dot"></span><span id="adding-text"></span></div>
 
 <script>
 (function(){
@@ -424,12 +431,20 @@ $('add-all').onclick = () => {
     if (c.state === 'pick') { const r = document.querySelector(`input[name="p${i}"]:checked`); if (r) items.push(c.options[+r.value]); }
   });
   if (!items.length) { toast('チェックした作品がありません'); return; }
-  const b = $('add-all'); b.disabled = true; b.textContent = '追加して発売日を調べています…';
-  mangaApi('addWorks', [items]).then(r => {
-    setList(r); cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('sheet').hidden = true;
-    toast(r.added && r.added.length ? `${r.added.length}作品を追加しました` : '追加する作品はありませんでした');
-  }, err => toast(err.message)).finally(() => { b.disabled = false; b.textContent = 'チェックした作品をまとめて追加'; });
+  
+  
+  cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('add-all').hidden = true; $('sheet').hidden = true;
+  adding += items.length; showAdding();
+  addQueue = addQueue.then(() => mangaApi('addWorks', [items]).then(r => {
+    setList(r);
+    toast(r.added && r.added.length ? `${r.added.length}作品を追加しました` : '追加する作品はありませんでした（登録済みでした）');
+  }, err => toast('追加できませんでした：' + err.message)).finally(() => { adding -= items.length; showAdding(); }));
 };
+let adding = 0, addQueue = Promise.resolve();
+function showAdding() {
+  $('adding').hidden = adding <= 0;
+  $('adding-text').textContent = `${adding}作品を追加しています…（発売日も調べています）`;
+}
 
 try { const c = JSON.parse(store.get(CACHE) || 'null'); if (c && c.works) { list = c; render(); } } catch (e) {}
 load();
