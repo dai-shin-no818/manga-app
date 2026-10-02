@@ -27,15 +27,16 @@
   --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
-body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 96px }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 84px }
 .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px }
 header { display: flex; justify-content: center; padding-block: 18px 4px }
-.dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; width: max-content; max-width: calc(100% - 32px) }
-.dock .fab { position: static; transform: none }
-.mine { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-weight: 700; font-size: 1rem; padding: 12px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / .25) }
-.mine svg { width: 20px; height: 20px; flex: none }
-.fab { white-space: nowrap }
-@media (max-width: 360px) { .dock { gap: 8px } .mine, .dock .fab { padding: 11px 13px; font-size: .92rem } }
+.menu-btn { position: fixed; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 14px rgb(0 0 0 / .25); z-index: 4 }
+.menu-btn svg { width: 22px; height: 22px }
+.menu { position: fixed; left: 16px; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 8px 24px rgb(0 0 0 / .3); z-index: 4 }
+.menu[hidden] { display: none }
+.menu button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 700; font-size: 1rem; padding: 12px 16px; border-radius: 10px; cursor: pointer; text-align: left; white-space: nowrap }
+.menu button:active { background: var(--chip) }
+.menu svg { width: 20px; height: 20px; flex: none }
 .months { display: flex; align-items: center; justify-content: space-between; gap: 8px }
 .months div { font-family: var(--display); font-size: 1.15rem; text-align: center; flex: 1 }
 .months button { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 1.4rem; line-height: 1; cursor: pointer }
@@ -125,15 +126,19 @@ img.cover { padding: 0 }
   <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a>（発売日・表紙は楽天ブックス・楽天Koboのデータです）</div>
 </div>
 
-<div class="dock">
-<button class="mine" id="open-mine" aria-label="登録した漫画の一覧を開く">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.5 1-3.5 12.5-3.4-1z"/></svg>
-      <span id="mine-label">登録した漫画</span>
-    </button>
-<button class="fab" id="open-add">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-  声で追加
+
+<button class="menu-btn" id="menu-btn" aria-label="メニューを開く" aria-expanded="false">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
 </button>
+<div class="menu" id="menu" hidden>
+  <button id="open-mine">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.5 1-3.5 12.5-3.4-1z"/></svg>
+    登録した漫画
+  </button>
+  <button id="open-add">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    声で追加
+  </button>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -263,8 +268,10 @@ $('next').onclick = () => goMonth(monthAt + 1, true);
 function renderMine() {
   if (!list) return;
     $('mine-title').textContent = `登録した漫画（${list.works.length}）`;
-  const sorted = list.works.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  $('mine-list').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.name)}</div>
+  
+  const yomi = w => w.kana || w.name;
+  const sorted = list.works.slice().sort((a, b) => yomi(a).localeCompare(yomi(b), 'ja'));
+  $('mine-list').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.fullTitle || w.name)}</div>
     <div class="meta">${w.volume ? `第${esc(w.volume)}巻 ${esc(w.label)} 発売予定` : w.checkedAt ? '次の巻はまだ発表されていません' : 'まだ調べていません'}${w.latest ? `｜最新刊 第${esc(w.latest)}巻` : ''}｜${w.edition === '電子' ? '電子書籍' : '紙の本'}</div></div>
     <button data-name="${esc(w.name)}" data-ed="${esc(w.edition)}">登録を外す</button></div>`).join('')
     : '<div class="empty">登録した漫画がありません。</div>';
@@ -285,7 +292,10 @@ function load() {
   });
 }
 
-$('open-mine').onclick = () => { $('mine-sheet').hidden = false; };
+function menu(open) { $('menu').hidden = !open; $('menu-btn').setAttribute('aria-expanded', open); }
+$('menu-btn').onclick = e => { e.stopPropagation(); menu($('menu').hidden); };
+document.addEventListener('click', e => { if (!$('menu').hidden && !e.target.closest('#menu')) menu(false); });
+$('open-mine').onclick = () => { menu(false); $('mine-sheet').hidden = false; };
 $('close-mine').onclick = () => { $('mine-sheet').hidden = true; };
 $('mine-sheet').addEventListener('click', e => { if (e.target === $('mine-sheet')) $('mine-sheet').hidden = true; });
 
@@ -333,7 +343,7 @@ function find(text, at) {
     renderCands();
   }, err => { if (btn) $('cands').innerHTML = ''; toast(err.message); }).finally(() => { if (btn) btn.disabled = false; });
 }
-$('open-add').onclick = () => { $('sheet').hidden = false; if (!cands.length) setTimeout(() => $('heard').focus(), 50); };
+$('open-add').onclick = () => { menu(false); $('sheet').hidden = false; if (!cands.length) setTimeout(() => $('heard').focus(), 50); };
 $('close').onclick = () => { $('sheet').hidden = true; };
 $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').hidden = true; });
 $('find').onclick = () => { const t = $('heard').value.trim(); if (t) find(t); else toast('題名を話すか書いてください'); };
