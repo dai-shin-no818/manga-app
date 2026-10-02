@@ -260,7 +260,7 @@ function card(w) {
     <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
     ${when}
     <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
-    <div class="chips">${edChip(w)}${w.onCalendar ? '<span class="chip cal">カレンダー登録済み</span>' : '<span class="chip wait">日にちが決まったらカレンダーへ</span>'}</div>
+    <div class="chips">${edChip(w)}</div>
     ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
   </div></${tag}>`;
 }
