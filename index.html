@@ -396,7 +396,7 @@ let findRun = 0;
 async function find(text, at) {
   // 新しく調べ始めたら前の確認はやめる。見つからなかった行の調べ直し（at あり）は、ほかの行の確認を止めない
   const run = at == null ? ++findRun : findRun, btn = at == null ? $('find') : null;
-  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">作品ごとに分けています…</div>'; $('add-all').hidden = true; }
+  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">題名を確かめています…（知らない題名はウェブで調べるので、30 秒ほどかかることがあります）</div>'; $('add-all').hidden = true; }
   try {
     const guesses = await mangaApi('splitWorks', [text]);
     if (run !== findRun) return;
