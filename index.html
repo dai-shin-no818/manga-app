@@ -167,7 +167,13 @@ img.cover { padding: 0 }
   window.mangaApi = function(fn, args) {
     if (!key) return Promise.reject(new Error('合言葉がありません。GAS の setup の記録に出たアドレス（#k=… つき）から開いてください'));
     return fetch(API, { method: 'POST', body: JSON.stringify({ key: key, fn: fn, args: args }) })
-      .then(function(r){ return r.json(); })
+      
+      .then(function(r){ return r.text().then(function(t){
+        try { return JSON.parse(t); } catch (e) {
+          var title = (t.match(/<title>([^<]*)<\/title>/i) || [])[1] || t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 80);
+          throw new Error('サーバーからデータでない返事が来ました（' + r.status + '：' + title + '）。この画面の写真を送ってください');
+        }
+      }); })
       .then(function(j){
         if (j.ok) return j.result;
         if (j.error === 'auth') { try { localStorage.removeItem(KEY_NAME); } catch (e) {} }
