@@ -125,6 +125,8 @@ img.cover { padding: 0 }
 .fix input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg) }
 .primary { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 13px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer }
 .primary:disabled, .ghost:disabled { opacity: .5; cursor: default }
+ 
+#add-all { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom, 0px)); margin-bottom: -4px; box-shadow: 0 -6px 16px var(--sheet), 0 6px 18px rgb(0 0 0 / .3); z-index: 1 }
 .busy { color: var(--muted); font-size: .9rem; text-align: center }
 .result { position: fixed; left: 16px; right: 16px; top: calc(64px + env(safe-area-inset-top, 0px)); max-width: 608px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; z-index: 7; box-shadow: 0 8px 24px rgb(0 0 0 / .35); display: grid; gap: 8px; font-size: .9rem }
 .result[hidden] { display: none }
@@ -440,6 +442,8 @@ function candHtml(c, i) {
   const desc = x => `${esc(x.name)}（${esc(slash(x.authorFull || x.author))}／${esc(x.publisher)}${x.latest ? '・' + esc(x.latest) + '巻まで' : ''}）`;
   const heardNote = c.heard ? `<div class="meta">「${esc(c.heard)}」と聞こえていました</div>` : '';
   const img = x => x && x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '';
+  if (c.state === 'adding' || c.state === 'added' || c.state === 'skipped') { const x = c.item || {}; return `<div class="cand"><div class="head">${img(x)}<div><div class="title">${esc(x.name || c.query)}</div>
+    <div class="state ${c.state === 'skipped' ? 'miss' : c.state === 'added' ? 'ok' : 'wait'}">${c.state === 'adding' ? '<span class="dot"></span>追加しています…' : c.state === 'added' ? '追加しました（発売日は少しあとに出ます）' : '追加しませんでした（' + esc(c.reason) + '）'}</div></div></div></div>`; }
   if (c.state === 'wait') return `<div class="cand"><div class="head"><div><div class="title">${esc(c.query)}</div>
     <div class="state wait"><span class="dot"></span>調べています…</div>${heardNote}</div></div></div>`;
   if (c.state === 'dup') return `<div class="cand"><div class="head"><div><div class="title">${esc(c.dup)}</div>
@@ -462,7 +466,9 @@ function candHtml(c, i) {
 }
 function renderCands() {
   $('cands').innerHTML = cands.map(candHtml).join('');
-  $('add-all').hidden = !cands.some(c => (c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup))) && (c.options.length === 1 && c.state === 'pick' ? c.checked === true : c.checked !== false));
+  const n = addable().length;
+  $('add-all').hidden = !n;
+  $('add-all').textContent = `チェックした作品を追加（${n}）`;
 }
 // チェックと選んだ候補を覚える
 $('cands').addEventListener('change', e => {
@@ -473,11 +479,11 @@ $('cands').addEventListener('change', e => {
   renderCands();
 });
 
-// 調べる：まず作品ごとに分けて「調べています…」の行を全部出し、1 作品ずつ調べて、終わった行から結果に変える
-//   at があれば、その行（見つからなかった行）だけを直した題名で調べ直す
+
+
 let findRun = 0;
 async function find(text, at) {
-  // 新しく調べ始めたら前の確認はやめる。見つからなかった行の調べ直し（at あり）は、ほかの行の確認を止めない
+  
   const run = at == null ? ++findRun : findRun, btn = at == null ? $('find') : null;
   if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">題名を確かめています…</div>'; $('add-all').hidden = true; }
   try {
@@ -563,31 +569,44 @@ $('cands').addEventListener('click', e => {
   b.disabled = true; b.textContent = '調べています…';
   find(t, i);
 });
-$('add-all').onclick = () => {
-  const items = [];
+
+function addable() {
+  const out = [];
   cands.forEach(c => {
-    if (c.checked === false) return;
-    if (c.state === 'ok') items.push(c.options[0]);
+    if (c.state === 'ok' && c.checked !== false) out.push({ c, item: c.options[0] });
     if (c.state === 'pick' && c.options.length === 1 && c.checked !== true) return;
-    if (c.state === 'pick' && c.options[c.pick] && !c.options[c.pick].dup) items.push(c.options[c.pick]);
+    if (c.state === 'pick' && c.checked !== false && c.options[c.pick] && !c.options[c.pick].dup) out.push({ c, item: c.options[c.pick] });
   });
-  if (!items.length) { toast('チェックした作品がありません'); return; }
-  
-  
-  findRun++; cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('add-all').hidden = true; $('sheet').hidden = true;
+  return out;
+}
+
+
+$('add-all').onclick = () => {
+  const picked = addable();
+  if (!picked.length) { toast('チェックした作品がありません'); return; }
+  picked.forEach(p => { p.c.state = 'adding'; p.c.item = p.item; });
+  renderCands();
+  const items = picked.map(p => p.item), names = items.map(o => o.name);
   adding += items.length; showAdding();
-  const names = items.map(o => o.name);
+  const mark = (added, skipped) => {
+    picked.forEach(p => {
+      const sk = skipped.find(x => x.name === p.item.name);
+      p.c.state = added.indexOf(p.item.name) >= 0 ? 'added' : 'skipped';
+      p.c.reason = sk ? sk.reason : '';
+    });
+    renderCands();
+    if ($('sheet').hidden) showResult(added, skipped.map(x => `${x.name}（${x.reason}）`));   
+  };
   addQueue = addQueue.then(() => mangaApi('addWorks', [items]).then(r => {
-    setList(r);
-    showResult(r.added || [], (r.skipped || []).map(x => `${x.name}（${x.reason}）`));
-    watchFresh(0);
+    setList(r); mark(r.added || [], r.skipped || []); watchFresh(0);
   }, err => {
     
     return mangaApi('getList', []).then(r => {
       setList(r);
       const have = n => r.works.some(w => w.name === n || w.fullTitle === n);
-      showResult(names.filter(have), names.filter(n => !have(n)).map(n => `${n}（${err.message}）`));
-    }, () => showResult([], names.map(n => `${n}（${err.message}。登録できたかは、あとで「登録した漫画」で確かめてください）`)));
+      mark(names.filter(have), names.filter(n => !have(n)).map(n => ({ name: n, reason: err.message })));
+      watchFresh(0);
+    }, () => mark([], names.map(n => ({ name: n, reason: err.message + '。登録できたかは、あとで「登録した漫画」で確かめてください' }))));
   }).finally(() => { adding -= items.length; showAdding(); }));
 };
 let adding = 0, addQueue = Promise.resolve();
