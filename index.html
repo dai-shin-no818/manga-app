@@ -118,7 +118,7 @@ img.cover { padding: 0 }
   <div class="panel" role="dialog" aria-labelledby="sheet-title">
     <h2 id="sheet-title">漫画を追加</h2>
     <div class="heard">
-      <label for="heard">題名を話すか書いてください（キーボードのマイクで話せます）。いくつかあるときは「、」で区切ります。カラー版は「カラー版」と付けます。</label>
+      <label for="heard">題名を話すか書いてください（キーボードのマイクで話せます）。いくつか続けて言っても大丈夫です。カラー版は「カラー版」と付けます。</label>
       <textarea id="heard" placeholder="例：薬屋のひとりごと、ドラゴンボール超 カラー版"></textarea>
       <button class="ghost" id="find" style="justify-self:start">調べる</button>
     </div>
@@ -239,18 +239,19 @@ $('view-works').addEventListener('click', e => {
 function candHtml(c, i) {
   const o = c.options || [];
   const desc = x => `${esc(x.name)}（${esc(slash(x.authorFull || x.author))}／${esc(x.publisher)}${x.latest ? '・' + esc(x.latest) + '巻まで' : ''}）`;
+  const heardNote = c.heard ? `<div class="meta">「${esc(c.heard)}」と聞こえていました</div>` : '';
   const img = x => x && x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '';
   if (c.state === 'dup') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.dup)}</div>
-    <div class="state dup">登録済みです${c.dup !== c.query ? `（「${esc(c.query)}」で調べました）` : ''}</div></div></div></div>`;
+    <div class="state dup">登録済みです</div>${heardNote}</div></div></div>`;
   if (c.state === 'miss') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.query)}</div>
     <div class="state miss">楽天で見つかりませんでした。題名を直して調べてください</div></div></div>
     <div class="fix"><input id="fix${i}" value="${esc(c.query)}" aria-label="題名を直す"><button class="ghost" data-fix="${i}">調べる</button></div></div>`;
   if (c.state === 'ok') { const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" checked aria-label="${esc(x.name)}を追加">${img(x)}<div>
     <div class="title">${esc(x.name)}${x.edition === '電子' ? '（電子書籍）' : ''}</div><div class="meta">${esc(slash(x.authorFull))}｜${esc(x.publisher)}${x.latest ? '｜' + esc(x.latest) + '巻まで発売' : ''}</div>
-    <div class="state ok">見つかりました</div></div></div></div>`; }
+    <div class="state ok">見つかりました</div>${heardNote}</div></div></div>`; }
   const anyNew = o.some(x => !x.dup);
   return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}"${anyNew ? ' checked' : ' disabled'} aria-label="${esc(c.query)}を追加"><div><div class="title">${esc(c.query)}</div>
-    <div class="state pick">いくつか見つかりました。どれですか</div></div></div>
+    <div class="state pick">いくつか見つかりました。どれですか</div>${heardNote}</div></div>
     <div class="choices">${o.map((x, j) => `<label><input type="radio" name="p${i}" value="${j}"${x.dup ? ' disabled' : ''}${j === o.findIndex(y => !y.dup) ? ' checked' : ''}>${desc(x)}${x.dup ? '　登録済み' : ''}</label>`).join('')}</div></div>`;
 }
 function renderCands() {
