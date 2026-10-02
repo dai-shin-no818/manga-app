@@ -37,6 +37,8 @@ header { display: flex; justify-content: center; padding-block: 18px 4px }
 .menu button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--fg); font: inherit; font-weight: 700; font-size: 1rem; padding: 12px 16px; border-radius: 10px; cursor: pointer; text-align: left; white-space: nowrap }
 .menu button:active { background: var(--chip) }
 .menu svg { width: 20px; height: 20px; flex: none }
+.search { width: 100%; font: inherit; font-size: 16px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg) }
+.months[hidden], .pages[hidden] { display: none }
 .months { display: flex; align-items: center; justify-content: space-between; gap: 8px }
 .months div { font-family: var(--display); font-size: 1.15rem; text-align: center; flex: 1 }
 .months button { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 1.4rem; line-height: 1; cursor: pointer }
@@ -54,7 +56,18 @@ h1 { font-family: var(--logo); font-weight: 400; font-size: 1.9rem; line-height:
 .tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
 .list { display: grid; gap: 10px }
-.item { display: grid; grid-template-columns: 60px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; color: inherit; text-decoration: none }
+.item { display: grid; grid-template-columns: 60px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; color: inherit; text-decoration: none; font: inherit; text-align: left; width: 100%; height: 116px; overflow: hidden; cursor: pointer }
+.item:active { background: var(--chip) }
+.item .info { gap: 3px; align-content: center }
+.item .title { font-size: .95rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
+.item .when, .item .meta { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.item .meta { display: block; font-size: .8rem }
+.item .cover { width: 60px; height: 90px }
+ 
+.detail-head { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: start }
+.cover.big { width: 96px; height: 144px }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: .92rem }
+.facts dt { color: var(--muted) } .facts dd { margin: 0; overflow-wrap: anywhere }
 .when { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-variant-numeric: tabular-nums; font-size: .9rem }
 .when .d { font-weight: 700 }
 .when .left { color: var(--accent); font-weight: 700; font-size: .82rem }
@@ -73,7 +86,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
   background: linear-gradient(160deg, var(--chip), var(--surface)); display: grid; place-items: center; text-align: center;
   font-size: .62rem; line-height: 1.3; color: var(--muted); padding: 2px }
 img.cover { padding: 0 }
-@media (max-width: 380px) { .item { grid-template-columns: 52px 1fr; gap: 10px } .cover { width: 52px } }
+@media (max-width: 380px) { .item { grid-template-columns: 52px 1fr; gap: 10px; height: 104px } .item .cover { width: 52px; height: 78px } }
 .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 8px;
   background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 13px 22px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 6px 18px rgb(0 0 0 / .25) }
 .fab svg { width: 20px; height: 20px }
@@ -133,14 +146,16 @@ img.cover { padding: 0 }
 <body>
 <div class="wrap">
   <header><h1>MANGA</h1></header>
+  <input type="search" id="q" class="search" placeholder="登録した漫画をさがす" aria-label="登録した漫画をさがす" enterkeyhint="search">
   <div class="notice" id="notice" hidden></div>
   
-  <nav class="months" aria-label="発売月">
+  <nav class="months" id="months" aria-label="発売月">
     <button id="prev" aria-label="前の月">‹</button>
     <div id="month-title" aria-live="polite">読み込み中…</div>
     <button id="next" aria-label="次の月">›</button>
   </nav>
   <section id="pages" class="pages"></section>
+  <section id="results" class="list" hidden></section>
   <div class="updated" id="updated"></div>
   
   <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a></div>
@@ -176,6 +191,12 @@ img.cover { padding: 0 }
     <div id="cands" style="display:grid;gap:10px"></div>
     <button class="primary" id="add-all" hidden>チェックした作品をまとめて追加</button>
     <button class="ghost" id="close">閉じる</button>
+  </div>
+</div>
+<div class="sheet" id="detail" hidden>
+  <div class="panel" role="dialog" aria-label="くわしい情報">
+    <div id="detail-body" style="display:grid;gap:14px"></div>
+    <button class="ghost" id="close-detail">閉じる</button>
   </div>
 </div>
 <div class="sheet" id="mine-sheet" hidden>
@@ -247,21 +268,66 @@ function cover(w, vol) {
     : `<div class="cover" aria-hidden="true">表紙<br>${vol ? '第' + esc(vol) + '巻' : 'なし'}</div>`;
 }
 
-// 発売予定の巻のカード
-function card(w) {
-  let when;
+// 発売日の 1 行（カードとくわしい画面で使う）
+function whenHtml(w) {
   if (w.exact && w.date) {
     const [y, m, d] = w.date.split('-'), left = daysLeft(w.date);
-    when = `<div class="when"><span class="d">${y}/${+m}/${+d}${/頃$/.test(w.label) ? '頃' : ''} 発売</span><span class="left">${left > 0 ? 'あと' + left + '日' : left === 0 ? '今日' : ''}</span></div>`;
-  } else when = `<div class="when"><span class="d">${esc(w.label)} 発売予定</span><span class="tbd">日にち未定</span></div>`;
-  const tag = w.url ? 'a' : 'article', href = w.url ? ` href="${esc(w.url)}" target="_blank" rel="noopener"` : '';
-  return `<${tag} class="item"${href}>${cover(w, w.latest || w.volume - 1)}<div class="info">
-    <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
-    ${when}
-    <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
-    ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
-  </div></${tag}>`;
+    return `<div class="when"><span class="d">${y}/${+m}/${+d}${/頃$/.test(w.label) ? '頃' : ''} 発売</span><span class="left">${left > 0 ? 'あと' + left + '日' : left === 0 ? '今日' : ''}</span></div>`;
+  }
+  return `<div class="when"><span class="d">${esc(w.label)} 発売予定</span><span class="tbd">日にち未定</span></div>`;
 }
+
+let cardWorks = [];
+function card(w) {
+  const i = cardWorks.push(w) - 1;
+  return `<button class="item" data-card="${i}" aria-label="${esc(w.name)} 第${esc(w.volume)}巻のくわしい情報を開く">${cover(w, w.latest || w.volume - 1)}<div class="info">
+    <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
+    ${whenHtml(w)}
+    <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
+  </div></button>`;
+}
+// くわしい画面：省略しない題名・発売日・作者・出版社・最新刊・お店の商品ページ
+function openDetail(w) {
+  $('detail-body').innerHTML = `<div class="detail-head">${w.image ? `<img class="cover big" src="${esc(w.image)}" alt="第${esc(w.latest || '')}巻の表紙" referrerpolicy="no-referrer">` : '<div class="cover big" aria-hidden="true">表紙</div>'}
+    <div class="info"><div class="title">${esc(w.fullTitle || w.name)}${w.volume ? ` <span class="vol">第${esc(w.volume)}巻</span>` : ''}</div>${w.volume ? whenHtml(w) : '<div class="when"><span class="tbd">次の巻はまだ発表されていません</span></div>'}</div></div>
+    <dl class="facts">
+      <dt>作者</dt><dd>${esc(slash(w.author)) || '—'}</dd>
+      <dt>出版社</dt><dd>${esc(w.publisher) || '—'}</dd>
+      <dt>最新刊</dt><dd>${w.latest ? '第' + esc(w.latest) + '巻（発売済み）' : '—'}</dd>
+      <dt>本の種類</dt><dd>${w.edition === '電子' ? '電子書籍' : '紙の本'}</dd>
+    </dl>
+    ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
+    ${w.url ? `<a class="primary" href="${esc(w.url)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">商品ページを開く</a>` : ''}`;
+  $('detail').hidden = false;
+}
+// 検索バー：登録した漫画を、題名・読み（ひらがなでもカタカナでも）・作者で探す。文字があるあいだは月のページの代わりに結果を出す
+function toKata(s) { return String(s || '').replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)); }
+function searchKey(s) { return toKata(String(s || '').normalize('NFKC')).replace(/[\s　・、。,.!?！？～〜~ー\-]/g, '').toUpperCase(); }
+function renderSearch() {
+  const q = searchKey($('q').value);
+  const on = !!q;
+  $('months').hidden = on; $('pages').hidden = on; $('results').hidden = !on;
+  if (!on || !list) return;
+  const hits = list.works.filter(w => [w.name, w.fullTitle, w.kana, w.author].some(v => searchKey(v).includes(q)));
+  cardWorks = [];
+  $('results').innerHTML = hits.length
+    ? hits.map(w => w.volume ? card(w) : noNextCard(w)).join('')
+    : '<div class="empty">登録した漫画に、合うものがありません</div>';
+}
+
+function noNextCard(w) {
+  const i = cardWorks.push(w) - 1;
+  return `<button class="item" data-card="${i}" aria-label="${esc(w.name)}のくわしい情報を開く">${cover(w, w.latest)}<div class="info">
+    <div class="title">${esc(w.name)}</div>
+    <div class="when"><span class="tbd">次の巻はまだ発表されていません</span></div>
+    <div class="meta">${w.latest ? '最新刊 第' + esc(w.latest) + '巻｜' : ''}${esc(slash(w.author))}</div>
+  </div></button>`;
+}
+$('q').addEventListener('input', renderSearch);
+$('results').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (b) openDetail(cardWorks[+b.dataset.card]); });
+$('pages').addEventListener('click', e => { const b = e.target.closest('[data-card]'); if (b) openDetail(cardWorks[+b.dataset.card]); });
+$('close-detail').onclick = () => { $('detail').hidden = true; };
+$('detail').addEventListener('click', e => { if (e.target === $('detail')) $('detail').hidden = true; });
 
 
 let months = [], monthAt = 0;
@@ -276,6 +342,7 @@ function renderPages() {
   const last = Object.keys(byMonth).sort().pop() || thisMonth;
   months = [];
   for (let [y, m] = thisMonth.split('-').map(Number); `${y}-${String(m).padStart(2, '0')}` <= last; m === 12 ? (y++, m = 1) : m++) months.push(`${y}-${String(m).padStart(2, '0')}`);
+  cardWorks = [];
   $('pages').innerHTML = months.map(k => {
     const ws = (byMonth[k] || []).sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
     return `<div class="page" data-month="${k}">${ws.length ? ws.map(card).join('') : '<div class="empty">この月に発売予定の巻はまだありません。</div>'}</div>`;
@@ -320,7 +387,7 @@ function renderMine() {
     : '<div class="empty">登録した漫画がありません。</div>';
 }
 function render() {
-  renderPages(); renderMine();
+  renderPages(); renderMine(); if ($('q').value) renderSearch();
   const t = list && list.works.map(w => w.checkedAt).filter(Boolean).sort().pop();
   $('updated').textContent = t ? `発売日の確認：${t.replace(/-/g, '/')}（毎朝 6 時に自動で確認）` : '';
 }
