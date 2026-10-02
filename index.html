@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MANGA">
+<meta name="robots" content="noindex">
+<title>MANGA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela&#43;Gothic&#43;One&amp;family=Russo&#43;One&amp;family=Zen&#43;Kaku&#43;Gothic&#43;New:wght@400;500;700&amp;display=swap">
+<style>
+ 
+:root {
+  --bg: #f4f3f6; --surface: #ffffff; --fg: #1d1b22; --muted: #6b6775; --line: #dcd9e2;
+  --accent: #c2410c; --accent-soft: #fbe7dc; --ok: #15803d; --warn: #a16207; --chip: #ecebf0;
+  --display: "Dela Gothic One", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --logo: "Russo One", "Arial Black", Impact, sans-serif;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141318; --surface: #1d1c22; --fg: #ecebf0; --muted: #9c98a6; --line: #2e2c35;
+  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141318; --surface: #1d1c22; --fg: #ecebf0; --muted: #9c98a6; --line: #2e2c35;
+  --accent: #fb8a4c; --accent-soft: #3a2418; --ok: #4ade80; --warn: #facc15; --chip: #2a2930; color-scheme: dark }
+* { box-sizing: border-box }
+html { -webkit-text-size-adjust: 100% }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 96px }
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px }
+header { display: flex; justify-content: center; padding-block: 18px 4px }
+h1 { font-family: var(--logo); font-weight: 400; font-size: 1.9rem; line-height: 1; margin: 0; letter-spacing: .06em; text-transform: uppercase }
+.notice { background: var(--accent-soft); color: var(--fg); border-radius: var(--radius); padding: 10px 14px; font-size: .88rem }
+.notice b { color: var(--accent) }
+.tabs { display: flex; gap: 6px }
+.tabs button { flex: 1; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-weight: 700; padding: 9px 6px; border-radius: 999px; cursor: pointer }
+.tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg) }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.list { display: grid; gap: 10px }
+.item { display: grid; grid-template-columns: 60px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; color: inherit; text-decoration: none }
+.when { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-variant-numeric: tabular-nums; font-size: .9rem }
+.when .d { font-weight: 700 }
+.when .left { color: var(--accent); font-weight: 700; font-size: .82rem }
+.when .tbd { color: var(--warn); font-size: .82rem }
+.info { min-width: 0; display: grid; gap: 4px; align-content: start }
+.title { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere }
+.title .vol { color: var(--accent); white-space: nowrap }
+.meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere }
+.memo { color: var(--warn); font-size: .8rem; overflow-wrap: anywhere }
+.chips { display: flex; flex-wrap: wrap; gap: 6px }
+.chip { background: var(--chip); color: var(--muted); border-radius: 999px; padding: 1px 9px; font-size: .75rem; font-weight: 500 }
+.chip.cal { color: var(--ok) } .chip.wait { color: var(--warn) }
+.section-label { font-size: .78rem; color: var(--muted); letter-spacing: .08em; font-weight: 700; margin: 6px 2px -4px }
+.item.none { opacity: .85 }
+.cover { width: 60px; aspect-ratio: 2 / 3; max-width: 100%; border-radius: 4px; border: 1px solid var(--line); object-fit: cover;
+  background: linear-gradient(160deg, var(--chip), var(--surface)); display: grid; place-items: center; text-align: center;
+  font-size: .62rem; line-height: 1.3; color: var(--muted); padding: 2px }
+img.cover { padding: 0 }
+@media (max-width: 380px) { .item { grid-template-columns: 52px 1fr; gap: 10px } .cover { width: 52px } }
+.fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 8px;
+  background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 13px 22px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; box-shadow: 0 6px 18px rgb(0 0 0 / .25) }
+.fab svg { width: 20px; height: 20px }
+.works { display: grid; gap: 8px }
+.work { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px }
+.work .w { flex: 1; min-width: 0 } .work .w div:first-child { font-weight: 700; overflow-wrap: anywhere }
+.work button, .ghost { border: 1px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: .82rem; padding: 6px 10px; border-radius: 8px; cursor: pointer; flex: none }
+.work button.sure { border-color: var(--accent); color: var(--accent); font-weight: 700 }
+.empty { color: var(--muted); text-align: center; padding: 24px 8px; font-size: .9rem }
+ 
+.sheet { position: fixed; inset: 0; background: rgb(0 0 0 / .45); display: grid; align-items: end; z-index: 5 }
+.sheet[hidden] { display: none }
+.panel { background: var(--bg); border-radius: 18px 18px 0 0; max-height: 92%; overflow: auto; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 14px; max-width: 640px; width: 100%; margin: 0 auto }
+.panel h2 { font-family: var(--display); font-weight: 400; font-size: 1.1rem; margin: 0 }
+.heard { display: grid; gap: 6px }
+.heard label { font-size: .8rem; color: var(--muted) }
+.heard textarea { font: inherit; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); min-height: 72px; resize: vertical; width: 100% }
+.cand { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px }
+.cand .head { display: flex; gap: 10px; align-items: flex-start }
+.cand .head img { width: 40px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 3px; border: 1px solid var(--line); flex: none }
+.cand input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); flex: none; margin-top: 2px }
+.state { font-size: .78rem; font-weight: 700 }
+.state.ok { color: var(--ok) } .state.pick { color: var(--warn) } .state.miss { color: var(--accent) } .state.dup { color: var(--muted) }
+.choices { display: grid; gap: 6px; padding-left: 32px }
+.choices label { display: flex; gap: 8px; align-items: flex-start; font-size: .9rem; cursor: pointer }
+.choices input { accent-color: var(--accent); margin-top: 4px; flex: none }
+.fix { display: flex; gap: 6px; padding-left: 32px }
+.fix input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--fg) }
+.primary { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 13px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer }
+.primary:disabled, .ghost:disabled { opacity: .5; cursor: default }
+.busy { color: var(--muted); font-size: .9rem; text-align: center }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); top: calc(14px + env(safe-area-inset-top, 0px)); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-weight: 700; z-index: 9; max-width: calc(100% - 32px); text-align: center }
+.updated { color: var(--muted); font-size: .75rem; text-align: center }
+@media (prefers-reduced-motion: no-preference) { .panel { animation: up .22s ease-out } @keyframes up { from { transform: translateY(24px); opacity: .6 } } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>MANGA</h1></header>
+  <div class="notice" id="notice" hidden></div>
+  <div class="tabs" role="tablist">
+    <button id="tab-next" role="tab" aria-selected="true">次の巻</button>
+    <button id="tab-works" role="tab" aria-selected="false">見張る作品</button>
+  </div>
+  <section id="view-next" class="list"><div class="empty">読み込み中…</div></section>
+  <section id="view-works" class="works" hidden></section>
+  <div class="updated" id="updated"></div>
+  
+  <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a>（発売日・表紙は楽天ブックス・楽天Koboのデータです）</div>
+</div>
+
+<button class="fab" id="open-add">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+  声で追加
+</button>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel" role="dialog" aria-labelledby="sheet-title">
+    <h2 id="sheet-title">漫画を追加</h2>
+    <div class="heard">
+      <label for="heard">題名を話すか書いてください（キーボードのマイクで話せます）。いくつかあるときは「、」で区切ります。カラー版は「カラー版」と付けます。</label>
+      <textarea id="heard" placeholder="例：薬屋のひとりごと、ドラゴンボール超 カラー版"></textarea>
+      <button class="ghost" id="find" style="justify-self:start">調べる</button>
+    </div>
+    <div id="cands" style="display:grid;gap:10px"></div>
+    <button class="primary" id="add-all" hidden>チェックした作品をまとめて追加</button>
+    <button class="ghost" id="close">閉じる</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  var API = "https://script.google.com/macros/s/AKfycbwQ4Tte-TQbm7sTKCc62LImEsI96nTjKQp3CF_uYV1x4fE519t4k9oFfzr_Vsi4XdrW7w/exec", KEY_NAME = 'manga_key';
+  var m = location.hash.match(/k=([0-9a-f]{20,})/), key = null;
+  try { if (m) localStorage.setItem(KEY_NAME, m[1]); key = localStorage.getItem(KEY_NAME); } catch (e) {}
+  key = key || (m ? m[1] : null);
+  window.mangaApi = function(fn, args) {
+    if (!key) return Promise.reject(new Error('合言葉がありません。GAS の setup の記録に出たアドレス（#k=… つき）から開いてください'));
+    return fetch(API, { method: 'POST', body: JSON.stringify({ key: key, fn: fn, args: args }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (j.ok) return j.result;
+        if (j.error === 'auth') { try { localStorage.removeItem(KEY_NAME); } catch (e) {} }
+        throw new Error(j.error === 'auth' ? '合言葉が違います。合言葉つきのアドレスから開き直してください' : (j.error || 'エラー'));
+      });
+  };
+})();
+</script>
+<script>
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CACHE = 'manga_list';
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+let list = null, cands = [];
+
+function todayJst() { return new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); }
+function daysLeft(d) { return Math.round((Date.parse(d) - Date.parse(todayJst())) / 864e5); }
+
+function slash(a) { return String(a || '').split('/').map(s => s.trim().replace(/([^ -~])[\s\u3000]+(?=[^ -~])/g, '$1')).filter(Boolean).join('／'); }
+function cover(w, vol) {
+  return w.image ? `<img class="cover" src="${esc(w.image)}" alt="第${esc(vol)}巻の表紙" loading="lazy" referrerpolicy="no-referrer">`
+    : `<div class="cover" aria-hidden="true">表紙<br>${vol ? '第' + esc(vol) + '巻' : 'なし'}</div>`;
+}
+function edChip(w) { return `<span class="chip">${w.edition === '電子' ? '電子書籍' : '紙の本'}</span>`; }
+
+function renderNext() {
+  const el = $('view-next');
+  if (!list) return;
+  const next = list.works.filter(w => w.volume), none = list.works.filter(w => !w.volume);
+  if (!list.works.length) { el.innerHTML = '<div class="empty">見張る作品がありません。下の「声で追加」から足してください。</div>'; return; }
+  const rows = next.map(w => {
+    let when;
+    if (w.exact && w.date) {
+      const [y, m, d] = w.date.split('-'), left = daysLeft(w.date);
+      when = `<div class="when"><span class="d">${y}/${+m}/${+d}${/頃$/.test(w.label) ? '頃' : ''} 発売</span><span class="left">${left > 0 ? 'あと' + left + '日' : left === 0 ? '今日' : ''}</span></div>`;
+    } else when = `<div class="when"><span class="d">${esc(w.label)} 発売予定</span><span class="tbd">日にち未定</span></div>`;
+    const tag = w.url ? 'a' : 'article', href = w.url ? ` href="${esc(w.url)}" target="_blank" rel="noopener"` : '';
+    return `<${tag} class="item"${href}>${cover(w, w.latest || w.volume - 1)}<div class="info">
+      <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
+      ${when}
+      <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
+      <div class="chips">${edChip(w)}${w.onCalendar ? '<span class="chip cal">カレンダー登録済み</span>' : '<span class="chip wait">日にちが決まったらカレンダーへ</span>'}</div>
+      ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
+    </div></${tag}>`;
+  }).join('');
+  const rest = none.map(w => `<article class="item none">${cover(w, w.latest)}<div class="info">
+      <div class="title">${esc(w.name)}</div><div class="when"><span class="tbd">${w.checkedAt ? '次の巻は未発表' : 'まだ調べていません'}</span></div>
+      <div class="meta">${w.latest ? '最新刊 第' + esc(w.latest) + '巻（発売済み）｜' : ''}${esc(slash(w.author))}${w.author ? '｜' : ''}${esc(w.publisher)}</div>
+      <div class="chips">${edChip(w)}</div>
+      ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}</div></article>`).join('');
+  el.innerHTML = rows + (rest ? `<div class="section-label">次の巻がまだ発表されていない作品</div>` + rest : '');
+}
+function renderWorks() {
+  if (!list) return;
+  $('tab-works').textContent = `見張る作品（${list.works.length}）`;
+  const sorted = list.works.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  $('view-works').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.name)}</div>
+    <div class="meta">${w.edition === '電子' ? '電子書籍（楽天Kobo）' : '紙の本（楽天ブックス）'}</div></div>
+    <button data-name="${esc(w.name)}" data-ed="${esc(w.edition)}">見張るのをやめる</button></div>`).join('')
+    : '<div class="empty">見張る作品がありません。</div>';
+}
+function render() {
+  renderNext(); renderWorks();
+  const t = list && list.works.map(w => w.checkedAt).filter(Boolean).sort().pop();
+  $('updated').textContent = t ? `発売日の確認：${t.replace(/-/g, '/')}（毎朝 6 時に自動で確認）` : '';
+}
+function setList(r) { list = r; store.set(CACHE, JSON.stringify(r)); render(); }
+function tab(which) {
+  const n = which === 'next';
+  $('tab-next').setAttribute('aria-selected', n); $('tab-works').setAttribute('aria-selected', !n);
+  $('view-next').hidden = !n; $('view-works').hidden = n;
+}
+function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
+function notice(html) { $('notice').innerHTML = html; $('notice').hidden = !html; }
+
+function load() {
+  mangaApi('getList', []).then(r => { notice(''); setList(r); }, err => {
+    notice(`<b>読み込めませんでした。</b>${esc(err.message)}`);
+    if (!list) $('view-next').innerHTML = '';
+  });
+}
+
+// 見張るのをやめる：1 回目で「もう一度押すとやめます」、2 回目で本当にやめる
+$('view-works').addEventListener('click', e => {
+  const b = e.target.closest('button[data-name]');
+  if (!b) return;
+  if (!b.classList.contains('sure')) {
+    document.querySelectorAll('#view-works button.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '見張るのをやめる'; });
+    b.classList.add('sure'); b.textContent = 'もう一度押すとやめます'; return;
+  }
+  b.disabled = true; b.textContent = 'やめています…';
+  mangaApi('removeWork', [b.dataset.name, b.dataset.ed]).then(r => { setList(r); toast(`「${b.dataset.name}」を見張るのをやめました`); },
+    err => { b.disabled = false; b.textContent = '見張るのをやめる'; b.classList.remove('sure'); toast(err.message); });
+});
+
+// 追加：題名を調べて、作品ごとの確認の一覧を出す
+function candHtml(c, i) {
+  const o = c.options || [];
+  const desc = x => `${esc(x.name)}（${esc(slash(x.authorFull || x.author))}／${esc(x.publisher)}${x.latest ? '・' + esc(x.latest) + '巻まで' : ''}）`;
+  const img = x => x && x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '';
+  if (c.state === 'dup') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.dup)}</div>
+    <div class="state dup">登録済みです${c.dup !== c.query ? `（「${esc(c.query)}」で調べました）` : ''}</div></div></div></div>`;
+  if (c.state === 'miss') return `<div class="cand"><div class="head"><input type="checkbox" disabled><div><div class="title">${esc(c.query)}</div>
+    <div class="state miss">楽天で見つかりませんでした。題名を直して調べてください</div></div></div>
+    <div class="fix"><input id="fix${i}" value="${esc(c.query)}" aria-label="題名を直す"><button class="ghost" data-fix="${i}">調べる</button></div></div>`;
+  if (c.state === 'ok') { const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" checked aria-label="${esc(x.name)}を追加">${img(x)}<div>
+    <div class="title">${esc(x.name)}${x.edition === '電子' ? '（電子書籍）' : ''}</div><div class="meta">${esc(slash(x.authorFull))}｜${esc(x.publisher)}${x.latest ? '｜' + esc(x.latest) + '巻まで発売' : ''}</div>
+    <div class="state ok">見つかりました</div></div></div></div>`; }
+  const anyNew = o.some(x => !x.dup);
+  return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}"${anyNew ? ' checked' : ' disabled'} aria-label="${esc(c.query)}を追加"><div><div class="title">${esc(c.query)}</div>
+    <div class="state pick">いくつか見つかりました。どれですか</div></div></div>
+    <div class="choices">${o.map((x, j) => `<label><input type="radio" name="p${i}" value="${j}"${x.dup ? ' disabled' : ''}${j === o.findIndex(y => !y.dup) ? ' checked' : ''}>${desc(x)}${x.dup ? '　登録済み' : ''}</label>`).join('')}</div></div>`;
+}
+function renderCands() {
+  $('cands').innerHTML = cands.map(candHtml).join('');
+  $('add-all').hidden = !cands.some(c => c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup)));
+}
+function find(text, at) {
+  const btn = at == null ? $('find') : null;
+  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">楽天で調べています…</div>'; $('add-all').hidden = true; }
+  return mangaApi('findWorks', [text]).then(r => {
+    if (at == null) cands = r; else cands.splice(at, 1, ...r);
+    renderCands();
+  }, err => { if (btn) $('cands').innerHTML = ''; toast(err.message); }).finally(() => { if (btn) btn.disabled = false; });
+}
+$('open-add').onclick = () => { $('sheet').hidden = false; if (!cands.length) setTimeout(() => $('heard').focus(), 50); };
+$('close').onclick = () => { $('sheet').hidden = true; };
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').hidden = true; });
+$('find').onclick = () => { const t = $('heard').value.trim(); if (t) find(t); else toast('題名を話すか書いてください'); };
+$('cands').addEventListener('click', e => {
+  const b = e.target.closest('button[data-fix]');
+  if (!b) return;
+  const i = +b.dataset.fix, t = $('fix' + i).value.trim();
+  if (!t) return;
+  b.disabled = true; b.textContent = '調べています…';
+  find(t, i);
+});
+$('add-all').onclick = () => {
+  const items = [];
+  cands.forEach((c, i) => {
+    const box = $('c' + i);
+    if (!box || !box.checked) return;
+    if (c.state === 'ok') items.push(c.options[0]);
+    if (c.state === 'pick') { const r = document.querySelector(`input[name="p${i}"]:checked`); if (r) items.push(c.options[+r.value]); }
+  });
+  if (!items.length) { toast('チェックした作品がありません'); return; }
+  const b = $('add-all'); b.disabled = true; b.textContent = '追加して発売日を調べています…';
+  mangaApi('addWorks', [items]).then(r => {
+    setList(r); cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('sheet').hidden = true; tab('next');
+    toast(r.added && r.added.length ? `${r.added.length}作品を追加しました` : '追加する作品はありませんでした');
+  }, err => toast(err.message)).finally(() => { b.disabled = false; b.textContent = 'チェックした作品をまとめて追加'; });
+};
+$('tab-next').onclick = () => tab('next');
+$('tab-works').onclick = () => tab('works');
+
+try { const c = JSON.parse(store.get(CACHE) || 'null'); if (c && c.works) { list = c; render(); } } catch (e) {}
+load();
+</script>
+</body>
+</html>
