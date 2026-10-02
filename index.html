@@ -90,6 +90,10 @@ img.cover { padding: 0 }
 .panel h2 { font-family: var(--display); font-weight: 400; font-size: 1.1rem; margin: 0 }
 .heard { display: grid; gap: 6px }
 .heard label { font-size: .8rem; color: var(--muted) }
+.listen { display: flex; align-items: center; gap: 10px; background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: .9rem }
+.listen[hidden] { display: none }
+.listen .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none }
+@media (prefers-reduced-motion: no-preference) { .listen .dot { animation: blink 1s infinite } @keyframes blink { 50% { opacity: .2 } } }
 .heard textarea { font: inherit; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); min-height: 72px; resize: vertical; width: 100% }
 .cand { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px }
 .cand .head { display: flex; gap: 10px; align-items: flex-start }
@@ -145,9 +149,13 @@ img.cover { padding: 0 }
   <div class="panel" role="dialog" aria-labelledby="sheet-title">
     <h2 id="sheet-title">漫画を追加</h2>
     <div class="heard">
-      <label for="heard">題名を話すか書いてください（キーボードのマイクで話せます）。いくつか続けて言っても大丈夫です。カラー版は「カラー版」と付けます。</label>
+      <div class="listen" id="listen" hidden><span class="dot"></span><span id="listen-text">聞いています…話し終わると自動で調べます</span></div>
+      <label for="heard">追加したい漫画の題名（いくつか続けて言っても大丈夫です。聞き違いはここで直せます）</label>
       <textarea id="heard" placeholder="例：薬屋のひとりごと、ドラゴンボール超 カラー版"></textarea>
-      <button class="ghost" id="find" style="justify-self:start">調べる</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="ghost" id="find">調べる</button>
+        <button class="ghost" id="talk" hidden>もう一度話す</button>
+      </div>
     </div>
     <div id="cands" style="display:grid;gap:10px"></div>
     <button class="primary" id="add-all" hidden>チェックした作品をまとめて追加</button>
@@ -345,9 +353,46 @@ function find(text, at) {
     renderCands();
   }, err => { if (btn) $('cands').innerHTML = ''; toast(err.message); }).finally(() => { if (btn) btn.disabled = false; });
 }
-$('open-add').onclick = () => { menu(false); $('sheet').hidden = false; if (!cands.length) setTimeout(() => $('heard').focus(), 50); };
-$('close').onclick = () => { $('sheet').hidden = true; };
-$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) $('sheet').hidden = true; });
+// 声で追加：押したらすぐ聞き取りを始める（Safari の音声認識）。話し終わったら、文字になった言葉で自動で調べる
+
+const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+function listen() {
+  if (!Speech) { setTimeout(() => $('heard').focus(), 50); return; }
+  stopListen();
+  rec = new Speech();
+  rec.lang = 'ja-JP'; rec.interimResults = true; rec.continuous = false;
+  let said = '';
+  $('listen').hidden = false; $('talk').hidden = true; $('heard').value = '';
+  $('listen-text').textContent = '聞いています…話し終わると自動で調べます';
+  rec.onresult = e => {
+    said = Array.from(e.results).map(r => r[0].transcript).join('');
+    $('heard').value = said;
+  };
+  rec.onerror = e => {
+    $('listen-text').textContent = e.error === 'not-allowed' || e.error === 'service-not-allowed'
+      ? 'マイクか音声認識が許可されていません。iPhone の「設定」→「Safari」で許可するか、下の欄に書いてください'
+      : e.error === 'no-speech' ? '声が聞こえませんでした。「もう一度話す」を押してください' : '聞き取れませんでした（' + e.error + '）';
+  };
+  rec.onend = () => {
+    rec = null; $('talk').hidden = false;
+    const t = $('heard').value.trim();
+    if (t) { $('listen').hidden = true; find(t); }
+  };
+  try { rec.start(); } catch (e) { $('listen').hidden = true; $('talk').hidden = false; }
+}
+
+function stopListen() {
+  if (!rec) return;
+  const r = rec; rec = null;
+  r.onresult = r.onerror = r.onend = null;
+  try { r.abort(); } catch (e) {}
+  $('listen').hidden = true; $('talk').hidden = false;
+}
+$('talk').onclick = () => listen();
+$('open-add').onclick = () => { menu(false); $('sheet').hidden = false; cands = []; $('cands').innerHTML = ''; $('add-all').hidden = true; listen(); };
+$('close').onclick = () => { stopListen(); $('sheet').hidden = true; };
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) { stopListen(); $('sheet').hidden = true; } });
 $('find').onclick = () => { const t = $('heard').value.trim(); if (t) find(t); else toast('題名を話すか書いてください'); };
 $('cands').addEventListener('click', e => {
   const b = e.target.closest('button[data-fix]');
