@@ -30,6 +30,21 @@ html { -webkit-text-size-adjust: 100% }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; padding: env(safe-area-inset-top, 0px) 16px 96px }
 .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 18px }
 header { display: flex; justify-content: center; padding-block: 18px 4px }
+.dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; width: max-content; max-width: calc(100% - 32px) }
+.dock .fab { position: static; transform: none }
+.mine { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-weight: 700; font-size: 1rem; padding: 12px 18px; border-radius: 999px; cursor: pointer; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / .25) }
+.mine svg { width: 20px; height: 20px; flex: none }
+.fab { white-space: nowrap }
+@media (max-width: 360px) { .dock { gap: 8px } .mine, .dock .fab { padding: 11px 13px; font-size: .92rem } }
+.months { display: flex; align-items: center; justify-content: space-between; gap: 8px }
+.months div { font-family: var(--display); font-size: 1.15rem; text-align: center; flex: 1 }
+.months button { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font-size: 1.4rem; line-height: 1; cursor: pointer }
+.months button:disabled { opacity: .3; cursor: default }
+ 
+.pages { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: -16px; overscroll-behavior-x: contain }
+.pages::-webkit-scrollbar { display: none }
+.page { flex: 0 0 100%; scroll-snap-align: start; padding-inline: 16px; display: grid; gap: 10px; align-content: start }
+.work .w .meta { font-weight: 400 }
 h1 { font-family: var(--logo); font-weight: 400; font-size: 1.9rem; line-height: 1; margin: 0; letter-spacing: .06em; text-transform: uppercase }
 .notice { background: var(--accent-soft); color: var(--fg); border-radius: var(--radius); padding: 10px 14px; font-size: .88rem }
 .notice b { color: var(--accent) }
@@ -98,21 +113,28 @@ img.cover { padding: 0 }
 <div class="wrap">
   <header><h1>MANGA</h1></header>
   <div class="notice" id="notice" hidden></div>
-  <div class="tabs" role="tablist">
-    <button id="tab-next" role="tab" aria-selected="true">次の巻</button>
-    <button id="tab-works" role="tab" aria-selected="false">見張る作品</button>
-  </div>
-  <section id="view-next" class="list"><div class="empty">読み込み中…</div></section>
-  <section id="view-works" class="works" hidden></section>
+  
+  <nav class="months" aria-label="発売月">
+    <button id="prev" aria-label="前の月">‹</button>
+    <div id="month-title" aria-live="polite">読み込み中…</div>
+    <button id="next" aria-label="次の月">›</button>
+  </nav>
+  <section id="pages" class="pages"></section>
   <div class="updated" id="updated"></div>
   
   <div class="updated"><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener" style="color:inherit">Supported by Rakuten Developers</a>（発売日・表紙は楽天ブックス・楽天Koboのデータです）</div>
 </div>
 
+<div class="dock">
+<button class="mine" id="open-mine" aria-label="登録した漫画の一覧を開く">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.5 1-3.5 12.5-3.4-1z"/></svg>
+      <span id="mine-label">登録した漫画</span>
+    </button>
 <button class="fab" id="open-add">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
   声で追加
 </button>
+</div>
 
 <div class="sheet" id="sheet" hidden>
   <div class="panel" role="dialog" aria-labelledby="sheet-title">
@@ -125,6 +147,13 @@ img.cover { padding: 0 }
     <div id="cands" style="display:grid;gap:10px"></div>
     <button class="primary" id="add-all" hidden>チェックした作品をまとめて追加</button>
     <button class="ghost" id="close">閉じる</button>
+  </div>
+</div>
+<div class="sheet" id="mine-sheet" hidden>
+  <div class="panel" role="dialog" aria-labelledby="mine-title">
+    <h2 id="mine-title">登録した漫画</h2>
+    <div id="mine-list" class="works"></div>
+    <button class="ghost" id="close-mine">閉じる</button>
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
@@ -165,74 +194,106 @@ function cover(w, vol) {
 }
 function edChip(w) { return `<span class="chip">${w.edition === '電子' ? '電子書籍' : '紙の本'}</span>`; }
 
-function renderNext() {
-  const el = $('view-next');
-  if (!list) return;
-  const next = list.works.filter(w => w.volume), none = list.works.filter(w => !w.volume);
-  if (!list.works.length) { el.innerHTML = '<div class="empty">見張る作品がありません。下の「声で追加」から足してください。</div>'; return; }
-  const rows = next.map(w => {
-    let when;
-    if (w.exact && w.date) {
-      const [y, m, d] = w.date.split('-'), left = daysLeft(w.date);
-      when = `<div class="when"><span class="d">${y}/${+m}/${+d}${/頃$/.test(w.label) ? '頃' : ''} 発売</span><span class="left">${left > 0 ? 'あと' + left + '日' : left === 0 ? '今日' : ''}</span></div>`;
-    } else when = `<div class="when"><span class="d">${esc(w.label)} 発売予定</span><span class="tbd">日にち未定</span></div>`;
-    const tag = w.url ? 'a' : 'article', href = w.url ? ` href="${esc(w.url)}" target="_blank" rel="noopener"` : '';
-    return `<${tag} class="item"${href}>${cover(w, w.latest || w.volume - 1)}<div class="info">
-      <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
-      ${when}
-      <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
-      <div class="chips">${edChip(w)}${w.onCalendar ? '<span class="chip cal">カレンダー登録済み</span>' : '<span class="chip wait">日にちが決まったらカレンダーへ</span>'}</div>
-      ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
-    </div></${tag}>`;
-  }).join('');
-  const rest = none.map(w => `<article class="item none">${cover(w, w.latest)}<div class="info">
-      <div class="title">${esc(w.name)}</div><div class="when"><span class="tbd">${w.checkedAt ? '次の巻は未発表' : 'まだ調べていません'}</span></div>
-      <div class="meta">${w.latest ? '最新刊 第' + esc(w.latest) + '巻（発売済み）｜' : ''}${esc(slash(w.author))}${w.author ? '｜' : ''}${esc(w.publisher)}</div>
-      <div class="chips">${edChip(w)}</div>
-      ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}</div></article>`).join('');
-  el.innerHTML = rows + (rest ? `<div class="section-label">次の巻がまだ発表されていない作品</div>` + rest : '');
+
+function card(w) {
+  let when;
+  if (w.exact && w.date) {
+    const [y, m, d] = w.date.split('-'), left = daysLeft(w.date);
+    when = `<div class="when"><span class="d">${y}/${+m}/${+d}${/頃$/.test(w.label) ? '頃' : ''} 発売</span><span class="left">${left > 0 ? 'あと' + left + '日' : left === 0 ? '今日' : ''}</span></div>`;
+  } else when = `<div class="when"><span class="d">${esc(w.label)} 発売予定</span><span class="tbd">日にち未定</span></div>`;
+  const tag = w.url ? 'a' : 'article', href = w.url ? ` href="${esc(w.url)}" target="_blank" rel="noopener"` : '';
+  return `<${tag} class="item"${href}>${cover(w, w.latest || w.volume - 1)}<div class="info">
+    <div class="title">${esc(w.name)} <span class="vol">第${esc(w.volume)}巻</span></div>
+    ${when}
+    <div class="meta">${esc(slash(w.author))}｜${esc(w.publisher)}</div>
+    <div class="chips">${edChip(w)}${w.onCalendar ? '<span class="chip cal">カレンダー登録済み</span>' : '<span class="chip wait">日にちが決まったらカレンダーへ</span>'}</div>
+    ${w.memo ? `<div class="memo">${esc(w.memo)}</div>` : ''}
+  </div></${tag}>`;
 }
-function renderWorks() {
+
+// 発売月ごとのページ（今月から、発売予定のある月まで）。次の巻が出ていない作品は「登録した漫画」の一覧だけに出す
+let months = [], monthAt = 0;
+function renderPages() {
   if (!list) return;
-  $('tab-works').textContent = `見張る作品（${list.works.length}）`;
+  const thisMonth = todayJst().slice(0, 7);
+  const byMonth = {};
+  list.works.filter(w => w.volume && w.sortKey && w.sortKey < '9999').forEach(w => {
+    const k = w.sortKey.slice(0, 7) < thisMonth ? thisMonth : w.sortKey.slice(0, 7);
+    (byMonth[k] = byMonth[k] || []).push(w);
+  });
+  const last = Object.keys(byMonth).sort().pop() || thisMonth;
+  months = [];
+  for (let [y, m] = thisMonth.split('-').map(Number); `${y}-${String(m).padStart(2, '0')}` <= last; m === 12 ? (y++, m = 1) : m++) months.push(`${y}-${String(m).padStart(2, '0')}`);
+  $('pages').innerHTML = months.map(k => {
+    const ws = (byMonth[k] || []).sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
+    return `<div class="page" data-month="${k}">${ws.length ? ws.map(card).join('') : '<div class="empty">この月に発売予定の巻はまだありません。</div>'}</div>`;
+  }).join('');
+  if (!list.works.length) $('pages').innerHTML = '<div class="page"><div class="empty">登録した漫画がありません。下の「声で追加」から足してください。</div></div>';
+  goMonth(Math.min(monthAt, months.length - 1), false);
+}
+function monthName(k) { const [y, m] = k.split('-'); return `${y}年${+m}月`; }
+function showMonth() {
+  $('month-title').textContent = months.length ? monthName(months[monthAt]) : '';
+  $('prev').disabled = monthAt <= 0; $('next').disabled = monthAt >= months.length - 1;
+}
+function goMonth(i, smooth) {
+  monthAt = Math.max(0, i);
+  const p = $('pages').children[monthAt];
+  const P = $('pages'), left = p ? p.offsetLeft - P.offsetLeft : 0;
+  P.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+  // なめらかに動かす命令が効かない環境もあるので、少し待って届いていなければ直接めくる
+  setTimeout(() => { if (Math.abs(P.scrollLeft - left) > 2) P.scrollLeft = left; }, smooth ? 450 : 0);
+  showMonth();
+}
+
+$('pages').addEventListener('scroll', () => {
+  clearTimeout(goMonth.t);
+  goMonth.t = setTimeout(() => { const i = Math.round($('pages').scrollLeft / $('pages').clientWidth); if (i !== monthAt) { monthAt = i; showMonth(); } }, 80);
+}, { passive: true });
+$('prev').onclick = () => goMonth(monthAt - 1, true);
+$('next').onclick = () => goMonth(monthAt + 1, true);
+
+
+function renderMine() {
+  if (!list) return;
+    $('mine-title').textContent = `登録した漫画（${list.works.length}）`;
   const sorted = list.works.slice().sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-  $('view-works').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.name)}</div>
-    <div class="meta">${w.edition === '電子' ? '電子書籍（楽天Kobo）' : '紙の本（楽天ブックス）'}</div></div>
-    <button data-name="${esc(w.name)}" data-ed="${esc(w.edition)}">見張るのをやめる</button></div>`).join('')
-    : '<div class="empty">見張る作品がありません。</div>';
+  $('mine-list').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.name)}</div>
+    <div class="meta">${w.volume ? `第${esc(w.volume)}巻 ${esc(w.label)} 発売予定` : w.checkedAt ? '次の巻はまだ発表されていません' : 'まだ調べていません'}${w.latest ? `｜最新刊 第${esc(w.latest)}巻` : ''}｜${w.edition === '電子' ? '電子書籍' : '紙の本'}</div></div>
+    <button data-name="${esc(w.name)}" data-ed="${esc(w.edition)}">登録を外す</button></div>`).join('')
+    : '<div class="empty">登録した漫画がありません。</div>';
 }
 function render() {
-  renderNext(); renderWorks();
+  renderPages(); renderMine();
   const t = list && list.works.map(w => w.checkedAt).filter(Boolean).sort().pop();
   $('updated').textContent = t ? `発売日の確認：${t.replace(/-/g, '/')}（毎朝 6 時に自動で確認）` : '';
 }
 function setList(r) { list = r; store.set(CACHE, JSON.stringify(r)); render(); }
-function tab(which) {
-  const n = which === 'next';
-  $('tab-next').setAttribute('aria-selected', n); $('tab-works').setAttribute('aria-selected', !n);
-  $('view-next').hidden = !n; $('view-works').hidden = n;
-}
 function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
 function notice(html) { $('notice').innerHTML = html; $('notice').hidden = !html; }
 
 function load() {
   mangaApi('getList', []).then(r => { notice(''); setList(r); }, err => {
     notice(`<b>読み込めませんでした。</b>${esc(err.message)}`);
-    if (!list) $('view-next').innerHTML = '';
+    if (!list) { $('pages').innerHTML = ''; $('month-title').textContent = ''; }
   });
 }
 
-// 見張るのをやめる：1 回目で「もう一度押すとやめます」、2 回目で本当にやめる
-$('view-works').addEventListener('click', e => {
+$('open-mine').onclick = () => { $('mine-sheet').hidden = false; };
+$('close-mine').onclick = () => { $('mine-sheet').hidden = true; };
+$('mine-sheet').addEventListener('click', e => { if (e.target === $('mine-sheet')) $('mine-sheet').hidden = true; });
+
+// 登録を外す：1 回目で「もう一度押すと外します」、2 回目で本当に外す
+$('mine-list').addEventListener('click', e => {
   const b = e.target.closest('button[data-name]');
   if (!b) return;
   if (!b.classList.contains('sure')) {
-    document.querySelectorAll('#view-works button.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '見張るのをやめる'; });
-    b.classList.add('sure'); b.textContent = 'もう一度押すとやめます'; return;
+    document.querySelectorAll('#mine-list button.sure').forEach(x => { x.classList.remove('sure'); x.textContent = '登録を外す'; });
+    b.classList.add('sure'); b.textContent = 'もう一度押すと外します'; return;
   }
-  b.disabled = true; b.textContent = 'やめています…';
-  mangaApi('removeWork', [b.dataset.name, b.dataset.ed]).then(r => { setList(r); toast(`「${b.dataset.name}」を見張るのをやめました`); },
-    err => { b.disabled = false; b.textContent = '見張るのをやめる'; b.classList.remove('sure'); toast(err.message); });
+  b.disabled = true; b.textContent = '外しています…';
+  mangaApi('removeWork', [b.dataset.name, b.dataset.ed]).then(r => { setList(r); toast(`「${b.dataset.name}」の登録を外しました`); },
+    err => { b.disabled = false; b.textContent = '登録を外す'; b.classList.remove('sure'); toast(err.message); });
 });
 
 // 追加：題名を調べて、作品ごとの確認の一覧を出す
@@ -289,12 +350,10 @@ $('add-all').onclick = () => {
   if (!items.length) { toast('チェックした作品がありません'); return; }
   const b = $('add-all'); b.disabled = true; b.textContent = '追加して発売日を調べています…';
   mangaApi('addWorks', [items]).then(r => {
-    setList(r); cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('sheet').hidden = true; tab('next');
+    setList(r); cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('sheet').hidden = true;
     toast(r.added && r.added.length ? `${r.added.length}作品を追加しました` : '追加する作品はありませんでした');
   }, err => toast(err.message)).finally(() => { b.disabled = false; b.textContent = 'チェックした作品をまとめて追加'; });
 };
-$('tab-next').onclick = () => tab('next');
-$('tab-works').onclick = () => tab('works');
 
 try { const c = JSON.parse(store.get(CACHE) || 'null'); if (c && c.works) { list = c; render(); } } catch (e) {}
 load();
