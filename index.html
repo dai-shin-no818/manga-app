@@ -203,7 +203,7 @@ img.cover { padding: 0 }
     function attempt(n) {
       return send(fn, args).catch(function(err){
         if (!err.network || n >= tries) throw err;
-        return new Promise(function(r){ setTimeout(r, 1500 * n); }).then(function(){ return attempt(n + 1); });
+        return new Promise(function(r){ setTimeout(r, 3000 * n); }).then(function(){ return attempt(n + 1); });
       });
     }
     return attempt(1);
@@ -216,7 +216,10 @@ img.cover { padding: 0 }
       .then(function(r){ return r.text().then(function(t){
         try { return JSON.parse(t); } catch (e) {
           var title = (t.match(/<title>([^<]*)<\/title>/i) || [])[1] || t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 80);
-          throw new Error('サーバーからデータでない返事が来ました（' + r.status + '：' + title + '）。この画面の写真を送ってください');
+          var x = new Error('サーバーからデータでない返事が来ました（' + r.status + '：' + title + '）。少し待ってもう一度試してください');
+          
+          x.network = r.status === 404 || r.status === 429 || r.status >= 500;
+          throw x;
         }
       }); })
       .then(function(j){
