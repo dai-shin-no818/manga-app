@@ -269,8 +269,10 @@ function renderMine() {
   if (!list) return;
     $('mine-title').textContent = `登録した漫画（${list.works.length}）`;
   
-  const yomi = w => w.kana || w.name;
-  const sorted = list.works.slice().sort((a, b) => yomi(a).localeCompare(yomi(b), 'ja'));
+  
+  const NUM = { イチ: 1, ニ: 2, サン: 3, ヨン: 4, ゴ: 5, ロク: 6, ナナ: 7, ハチ: 8 };
+  const yomi = w => (w.kana || w.name).replace(/ダイ(イチ|ニ|サン|ヨン|ゴ|ロク|ナナ|ハチ)ブ/g, (_, n) => 'ダイ' + NUM[n] + 'ブ');
+  const sorted = list.works.slice().sort((a, b) => yomi(a).localeCompare(yomi(b), 'ja', { numeric: true }));
   $('mine-list').innerHTML = sorted.length ? sorted.map(w => `<div class="work"><div class="w"><div>${esc(w.fullTitle || w.name)}</div>
     <div class="meta">${w.volume ? `第${esc(w.volume)}巻 ${esc(w.label)} 発売予定` : w.checkedAt ? '次の巻はまだ発表されていません' : 'まだ調べていません'}${w.latest ? `｜最新刊 第${esc(w.latest)}巻` : ''}｜${w.edition === '電子' ? '電子書籍' : '紙の本'}</div></div>
     <button data-name="${esc(w.name)}" data-ed="${esc(w.edition)}">登録を外す</button></div>`).join('')
