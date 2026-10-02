@@ -113,6 +113,14 @@ img.cover { padding: 0 }
 .primary { background: var(--accent); color: #fff; border: 0; border-radius: 12px; padding: 13px; font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer }
 .primary:disabled, .ghost:disabled { opacity: .5; cursor: default }
 .busy { color: var(--muted); font-size: .9rem; text-align: center }
+.result { position: fixed; left: 16px; right: 16px; top: calc(64px + env(safe-area-inset-top, 0px)); max-width: 608px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; z-index: 7; box-shadow: 0 8px 24px rgb(0 0 0 / .35); display: grid; gap: 8px; font-size: .9rem }
+.result[hidden] { display: none }
+.result ul { margin: 2px 0 6px; padding-left: 1.2em; overflow-wrap: anywhere }
+.result .r-ok { color: var(--ok); font-weight: 700 } .result .r-ng { color: var(--accent); font-weight: 700 }
+.result button { justify-self: end }
+.state.wait { color: var(--muted); display: flex; align-items: center; gap: 6px }
+.state.wait .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none }
+@media (prefers-reduced-motion: no-preference) { .state.wait .dot { animation: blink 1s infinite } }
 .adding { position: fixed; left: 50%; transform: translateX(-50%); top: calc(64px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 8px; background: var(--accent-soft); color: var(--fg); border: 1px solid var(--line); padding: 7px 14px; border-radius: 999px; font-size: .82rem; font-weight: 700; z-index: 6; max-width: calc(100% - 32px); box-shadow: 0 4px 14px rgb(0 0 0 / .25) }
 .adding[hidden] { display: none }
 .adding .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none }
@@ -178,6 +186,7 @@ img.cover { padding: 0 }
   </div>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="result" id="result" role="status" hidden><div id="result-body"></div><button class="ghost" id="result-close">閉じる</button></div>
 <div class="adding" id="adding" role="status" hidden><span class="dot"></span><span id="adding-text"></span></div>
 
 <script>
@@ -186,9 +195,23 @@ img.cover { padding: 0 }
   var m = location.hash.match(/k=([0-9a-f]{20,})/), key = null;
   try { if (m) localStorage.setItem(KEY_NAME, m[1]); key = localStorage.getItem(KEY_NAME); } catch (e) {}
   key = key || (m ? m[1] : null);
+  
+  
+  var SAFE = { getList: 1, splitWorks: 1, findOne: 1, findWorks: 1, getAddLog: 1 };
   window.mangaApi = function(fn, args) {
+    var tries = SAFE[fn] ? 3 : 1;
+    function attempt(n) {
+      return send(fn, args).catch(function(err){
+        if (!err.network || n >= tries) throw err;
+        return new Promise(function(r){ setTimeout(r, 1500 * n); }).then(function(){ return attempt(n + 1); });
+      });
+    }
+    return attempt(1);
+  };
+  function send(fn, args) {
     if (!key) return Promise.reject(new Error('合言葉がありません。GAS の setup の記録に出たアドレス（#k=… つき）から開いてください'));
     return fetch(API, { method: 'POST', body: JSON.stringify({ key: key, fn: fn, args: args }) })
+      .catch(function(e){ var x = new Error('通信できませんでした。電波のよい所で、もう一度試してください'); x.network = true; throw x; })
       
       .then(function(r){ return r.text().then(function(t){
         try { return JSON.parse(t); } catch (e) {
@@ -306,7 +329,8 @@ function notice(html) { $('notice').innerHTML = html; $('notice').hidden = !html
 
 function load() {
   mangaApi('getList', []).then(r => { notice(''); setList(r); }, err => {
-    notice(`<b>読み込めませんでした。</b>${esc(err.message)}`);
+    notice(`<b>読み込めませんでした。</b>${esc(err.message)} <button class="ghost" id="reload" style="color:var(--fg)">もう一度読み込む</button>`);
+    if ($('reload')) $('reload').onclick = load;
     if (!list) { $('pages').innerHTML = ''; $('month-title').textContent = ''; }
   });
 }
@@ -331,52 +355,83 @@ $('mine-list').addEventListener('click', e => {
     err => { b.disabled = false; b.textContent = '登録を外す'; b.classList.remove('sure'); toast(err.message); });
 });
 
-// 追加：題名を調べて、作品ごとの確認の一覧を出す
+// 候補の 1 行。チェックや選んだ候補は cands に覚えておく（行が順に入れ替わっても、押したチェックが消えないように）
 function candHtml(c, i) {
   const o = c.options || [];
   const desc = x => `${esc(x.name)}（${esc(slash(x.authorFull || x.author))}／${esc(x.publisher)}${x.latest ? '・' + esc(x.latest) + '巻まで' : ''}）`;
   const heardNote = c.heard ? `<div class="meta">「${esc(c.heard)}」と聞こえていました</div>` : '';
   const img = x => x && x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '';
+  if (c.state === 'wait') return `<div class="cand"><div class="head"><div><div class="title">${esc(c.query)}</div>
+    <div class="state wait"><span class="dot"></span>調べています…</div>${heardNote}</div></div></div>`;
   if (c.state === 'dup') return `<div class="cand"><div class="head"><div><div class="title">${esc(c.dup)}</div>
     <div class="state dup">登録済みです</div>${heardNote}</div></div></div>`;
   if (c.state === 'miss') return `<div class="cand"><div class="head"><div><div class="title">${esc(c.query)}</div>
-    <div class="state miss">見つかりませんでした。題名を直して調べてください</div></div></div>
+    <div class="state miss">${c.error ? '調べられませんでした（' + esc(c.error) + '）' : '見つかりませんでした'}。題名を直して調べてください</div>${heardNote}</div></div>
     <div class="fix"><input id="fix${i}" value="${esc(c.query)}" aria-label="題名を直す"><button class="ghost" data-fix="${i}">調べる</button></div></div>`;
-  if (c.state === 'ok') { const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" checked aria-label="${esc(x.name)}を追加">${img(x)}<div>
+  if (c.state === 'ok') { const x = o[0]; return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" data-i="${i}"${c.checked !== false ? ' checked' : ''} aria-label="${esc(x.name)}を追加">${img(x)}<div>
     <div class="title">${esc(x.name)}${x.edition === '電子' ? '（電子書籍）' : ''}</div><div class="meta">${esc(slash(x.authorFull))}｜${esc(x.publisher)}${x.latest ? '｜' + esc(x.latest) + '巻まで発売' : ''}</div>
     <div class="state ok">見つかりました</div>${heardNote}</div></div></div>`; }
   const anyNew = o.some(x => !x.dup);
-  return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}"${anyNew ? ' checked' : ' disabled'} aria-label="${esc(c.query)}を追加"><div><div class="title">${esc(c.query)}</div>
+  if (c.pick == null) c.pick = o.findIndex(y => !y.dup);
+  return `<div class="cand"><div class="head"><input type="checkbox" id="c${i}" data-i="${i}"${anyNew && c.checked !== false ? ' checked' : ''}${anyNew ? '' : ' disabled'} aria-label="${esc(c.query)}を追加"><div><div class="title">${esc(c.query)}</div>
     <div class="state pick">いくつか見つかりました。どれですか</div>${heardNote}</div></div>
-    <div class="choices">${o.map((x, j) => `<label><input type="radio" name="p${i}" value="${j}"${x.dup ? ' disabled' : ''}${j === o.findIndex(y => !y.dup) ? ' checked' : ''}>${desc(x)}${x.dup ? '　登録済み' : ''}</label>`).join('')}</div></div>`;
+    <div class="choices">${o.map((x, j) => `<label><input type="radio" name="p${i}" data-i="${i}" value="${j}"${x.dup ? ' disabled' : ''}${j === c.pick ? ' checked' : ''}>${desc(x)}${x.dup ? '　登録済み' : ''}</label>`).join('')}</div></div>`;
 }
 function renderCands() {
   $('cands').innerHTML = cands.map(candHtml).join('');
-  $('add-all').hidden = !cands.some(c => c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup)));
+  $('add-all').hidden = !cands.some(c => (c.state === 'ok' || (c.state === 'pick' && c.options.some(x => !x.dup))) && c.checked !== false);
 }
-function find(text, at) {
-  const btn = at == null ? $('find') : null;
-  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">調べています…</div>'; $('add-all').hidden = true; }
-  return mangaApi('findWorks', [text]).then(r => {
-    if (at == null) cands = r; else cands.splice(at, 1, ...r);
+// チェックと選んだ候補を覚える
+$('cands').addEventListener('change', e => {
+  const t = e.target, i = +t.dataset.i;
+  if (!cands[i]) return;
+  if (t.type === 'checkbox') cands[i].checked = t.checked;
+  if (t.type === 'radio') cands[i].pick = +t.value;
+  renderCands();
+});
+
+// 調べる：まず作品ごとに分けて「調べています…」の行を全部出し、1 作品ずつ調べて、終わった行から結果に変える
+//   at があれば、その行（見つからなかった行）だけを直した題名で調べ直す
+let findRun = 0;
+async function find(text, at) {
+  // 新しく調べ始めたら前の確認はやめる。見つからなかった行の調べ直し（at あり）は、ほかの行の確認を止めない
+  const run = at == null ? ++findRun : findRun, btn = at == null ? $('find') : null;
+  if (btn) { btn.disabled = true; $('cands').innerHTML = '<div class="busy">作品ごとに分けています…</div>'; $('add-all').hidden = true; }
+  try {
+    const guesses = await mangaApi('splitWorks', [text]);
+    if (run !== findRun) return;
+    const rows = guesses.map(g => ({ query: g.title, heard: g.heard && g.heard !== g.title ? g.heard : '', state: 'wait', options: [] }));
+    const base = at == null ? 0 : at;
+    if (at == null) cands = rows; else cands.splice(at, 1, ...rows);
+    if (!rows.length) { if (at == null) $('cands').innerHTML = '<div class="busy">漫画の題名が聞き取れませんでした。もう一度話すか、欄に書いてください</div>'; return; }
     renderCands();
-  }, err => { if (btn) $('cands').innerHTML = ''; toast(err.message); }).finally(() => { if (btn) btn.disabled = false; });
+    for (let k = 0; k < guesses.length; k++) {
+      let r;
+      try { r = await mangaApi('findOne', [guesses[k]]); }
+      catch (e) { r = Object.assign({}, rows[k], { state: 'miss', error: e.message }); }
+      if (run !== findRun) return;
+      cands[base + k] = r;
+      renderCands();
+    }
+  } catch (err) {
+    if (btn) $('cands').innerHTML = `<div class="busy">${esc(err.message)}</div>`; else toast(err.message);
+  } finally { if (btn) btn.disabled = false; }
 }
 // 声で追加：押したらすぐ聞き取りを始める（Safari の音声認識）。話し終わったら、文字になった言葉で自動で調べる
-
+//   音声認識が使えないときは、書く欄にキーボードで入れる（キーボードのマイクでも話せる）
 const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
 function listen() {
   if (!Speech) { setTimeout(() => $('heard').focus(), 50); return; }
   stopListen();
   rec = new Speech();
-  
+  //   続けて話せるように continuous にし、話が 2.5 秒とぎれたら（または「話し終わった」を押したら）終わる
   rec.lang = 'ja-JP'; rec.interimResults = true; rec.continuous = true;
   $('listen').hidden = false; $('talk').hidden = true; $('heard').value = '';
   $('listen-text').textContent = '聞いています…続けて話せます。話し終わると自動で調べます';
   const r = rec;
   rec.onresult = e => {
-    
+    // 区切りごとの言葉を「、」でつなぐ（作品の区切りの手がかりになる）
     $('heard').value = Array.from(e.results).map(x => x[0].transcript.trim()).filter(Boolean).join('、');
     clearTimeout(listen.t);
     listen.t = setTimeout(() => { if (rec === r) { try { r.stop(); } catch (err) {} } }, 2500);
@@ -388,7 +443,7 @@ function listen() {
   };
   rec.onend = () => {
     clearTimeout(listen.t);
-    
+    // 終わったあとも Safari がマイクをつかんだままになることがあるので、中止も送ってマイクを手放す
     r.onresult = r.onerror = r.onend = null;
     try { r.abort(); } catch (err) {}
     rec = null; $('talk').hidden = false;
@@ -397,7 +452,7 @@ function listen() {
   };
   try { rec.start(); } catch (e) { $('listen').hidden = true; $('talk').hidden = false; }
 }
-
+// 聞き取りをやめる（前の聞き取りの終わりの合図が、次の聞き取りや画面を動かさないように合図を外してから止める）
 function stopListen() {
   if (!rec) return;
   const r = rec; rec = null;
@@ -405,10 +460,13 @@ function stopListen() {
   try { r.abort(); } catch (e) {}
   $('listen').hidden = true; $('talk').hidden = false;
 }
-
+// 画面から離れたら（ほかのアプリに切り替えたときなど）聞き取りをやめてマイクを手放す
 document.addEventListener('visibilitychange', () => { if (document.hidden) stopListen(); });
 window.addEventListener('pagehide', stopListen);
 $('talk').onclick = () => listen();
+// ほかのアプリから戻ってきたら、一覧を新しくする（5 分以上たっていたら）
+let loadedAt = Date.now();
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - loadedAt > 5 * 60e3) { loadedAt = Date.now(); load(); } });
 $('done-talk').onclick = () => { if (rec) { try { rec.stop(); } catch (e) {} } };
 $('open-add').onclick = () => { menu(false); $('sheet').hidden = false; cands = []; $('cands').innerHTML = ''; $('add-all').hidden = true; listen(); };
 $('close').onclick = () => { stopListen(); $('sheet').hidden = true; };
@@ -424,27 +482,44 @@ $('cands').addEventListener('click', e => {
 });
 $('add-all').onclick = () => {
   const items = [];
-  cands.forEach((c, i) => {
-    const box = $('c' + i);
-    if (!box || !box.checked) return;
+  cands.forEach(c => {
+    if (c.checked === false) return;
     if (c.state === 'ok') items.push(c.options[0]);
-    if (c.state === 'pick') { const r = document.querySelector(`input[name="p${i}"]:checked`); if (r) items.push(c.options[+r.value]); }
+    if (c.state === 'pick' && c.options[c.pick] && !c.options[c.pick].dup) items.push(c.options[c.pick]);
   });
   if (!items.length) { toast('チェックした作品がありません'); return; }
-  
-  
-  cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('add-all').hidden = true; $('sheet').hidden = true;
+  // 画面はすぐ閉じて操作できるようにし、追加と発売日の確認は裏で続ける。上に「追加しています」を出しておく
+  //   追加中にまた追加したときは、前の追加が終わってから順番に送る（同時に書き込んでぶつからないように）
+  findRun++; cands = []; $('cands').innerHTML = ''; $('heard').value = ''; $('add-all').hidden = true; $('sheet').hidden = true;
   adding += items.length; showAdding();
+  const names = items.map(o => o.name);
   addQueue = addQueue.then(() => mangaApi('addWorks', [items]).then(r => {
     setList(r);
-    toast(r.added && r.added.length ? `${r.added.length}作品を追加しました` : '追加する作品はありませんでした（登録済みでした）');
-  }, err => toast('追加できませんでした：' + err.message)).finally(() => { adding -= items.length; showAdding(); }));
+    showResult(r.added || [], (r.skipped || []).map(x => `${x.name}（${x.reason}）`));
+  }, err => {
+    // 通信が途中で切れても、GAS では登録できていることがある。一覧を読み直して、登録できた作品とできなかった作品を見比べる
+    return mangaApi('getList', []).then(r => {
+      setList(r);
+      const have = n => r.works.some(w => w.name === n || w.fullTitle === n);
+      showResult(names.filter(have), names.filter(n => !have(n)).map(n => `${n}（${err.message}）`));
+    }, () => showResult([], names.map(n => `${n}（${err.message}。登録できたかは、あとで「登録した漫画」で確かめてください）`)));
+  }).finally(() => { adding -= items.length; showAdding(); }));
 };
 let adding = 0, addQueue = Promise.resolve();
 function showAdding() {
   $('adding').hidden = adding <= 0;
   $('adding-text').textContent = `${adding}作品を追加しています…（発売日も調べています）`;
 }
+// 追加の結果：作品ごとに、登録できたか・できなかった理由を出す。閉じるまで残す
+function showResult(added, failed) {
+  const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
+  $('result-body').innerHTML =
+    (added.length ? `<div class="r-ok">追加しました（${added.length}）</div><ul>${li(added)}</ul>` : '') +
+    (failed.length ? `<div class="r-ng">追加しませんでした（${failed.length}）</div><ul>${li(failed)}</ul>` : '') +
+    (!added.length && !failed.length ? '<div>追加する作品はありませんでした</div>' : '');
+  $('result').hidden = false;
+}
+$('result-close').onclick = () => { $('result').hidden = true; };
 
 try { const c = JSON.parse(store.get(CACHE) || 'null'); if (c && c.works) { list = c; render(); } } catch (e) {}
 load();
